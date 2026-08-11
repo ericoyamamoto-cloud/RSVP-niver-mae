@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (DEFAULT SETTINGS SINCRONIZADOS)
+   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (DADOS OFICIAIS DO EVENTO)
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -12,12 +12,12 @@ const DEFAULT_SETTINGS = {
   eventType: 'Aniversário / Festa Social',
   eventTitle: 'Aniversário de 88 Anos',
   eventSubtitle: 'Venha comemorar esta data tão especial conosco!',
-  eventDate: '2026-09-20',
-  eventTime: '19:30',
-  locationName: 'Espaço Festa & Celebração',
-  locationAddress: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
-  mapsUrl: 'https://maps.google.com/?q=Av.+Paulista,+1000,+Sao+Paulo',
-  specialNotice: 'Traje: Esporte Fino | Estacionamento no local | Confirme sua presença pelo site.',
+  eventDate: '2026-10-17',
+  eventTime: '18:30',
+  locationName: 'Gramercy Park - Edificio ONE - Sala de Festas Principal',
+  locationAddress: 'Avenida Parkinson 42 - Gramercy Park - Barueri - SP',
+  mapsUrl: 'https://maps.app.goo.gl/qkGN112BtbveD2r7A',
+  specialNotice: 'RSVP - Confirme sua presença até o dia 30/09 por favor. Obs.: devido a limitação de vagas internas, o estacionamento dos veículos deve ser feito fora do condomínio Gramercy Park',
   webhookUrl: '',
   publicSiteUrl: 'https://rsvp-chi-umber.vercel.app',
   messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {tipo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
@@ -31,9 +31,8 @@ class StorageEngine {
   }
 
   init() {
-    if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-    }
+    // Sobrescreve/atualiza as configurações para garantir os dados oficiais da imagem
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
   }
 
   getSettings() {
