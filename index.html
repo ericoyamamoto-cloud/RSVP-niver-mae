@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmação de Presença (RSVP) - Evento Especial</title>
+  <meta name="description" content="Confirme sua presença e acompanhantes para nosso evento especial de forma rápida e prática.">
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/rsvp.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <!-- Dynamic Background Ornaments -->
+  <div class="bg-ornament bg-ornament-1"></div>
+  <div class="bg-ornament bg-ornament-2"></div>
+  <div class="bg-ornament bg-ornament-3"></div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-container">
+
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+      <a href="index.html" class="nav-brand">
+        <div class="nav-brand-icon">🎉</div>
+        <div>
+          <div class="nav-brand-title gradient-text">RSVP Manager</div>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Gestão de Convites & Presença</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <button id="nav-btn-admin" class="btn btn-sm btn-secondary" onclick="window.app.switchView('admin')">
+          ⚙️ Painel do Anfitrião
+        </button>
+        <button id="nav-btn-rsvp" class="btn btn-sm btn-gold" style="display:none;" onclick="window.app.switchView('rsvp')">
+          💌 Visualizar Convite
+        </button>
+      </div>
+    </nav>
+
+    <!-- ====================================================================
+         1. GUEST RSVP VIEW
+         ==================================================================== -->
+    <main id="view-rsvp" class="rsvp-wrapper">
+
+      <!-- Event Hero Card -->
+      <section class="glass-card event-hero-card">
+        <div class="event-hero-badge">
+          <span id="event-hero-badge" class="badge badge-gold">Aniversário / Festa Social</span>
+        </div>
+        <h1 id="event-hero-title" class="event-hero-title">Aniversário de 88 Anos</h1>
+        <p id="event-hero-subtitle" class="event-hero-subtitle">Venha comemorar esta data tão especial conosco!</p>
+
+        <!-- Countdown Timer Grid -->
+        <div class="countdown-grid">
+          <div class="countdown-box">
+            <div id="timer-days" class="countdown-val">00</div>
+            <div class="countdown-lbl">Dias</div>
+          </div>
+          <div class="countdown-box">
+            <div id="timer-hours" class="countdown-val">00</div>
+            <div class="countdown-lbl">Horas</div>
+          </div>
+          <div class="countdown-box">
+            <div id="timer-minutes" class="countdown-val">00</div>
+            <div class="countdown-lbl">Min</div>
+          </div>
+          <div class="countdown-box">
+            <div id="timer-seconds" class="countdown-val">00</div>
+            <div class="countdown-lbl">Seg</div>
+          </div>
+        </div>
+
+        <!-- Event Details Info Grid -->
+        <div class="event-details-grid">
+          <div class="event-info-item">
+            <div class="event-info-icon">📅</div>
+            <div class="event-info-content">
+              <strong>Data e Horário</strong>
+              <span id="event-info-date">A carregar data...</span>
+              <span id="event-info-time" style="display:block; font-weight:600; color:var(--accent-gold);">19:30h</span>
+            </div>
+          </div>
+
+          <div class="event-info-item">
+            <div class="event-info-icon">📍</div>
+            <div class="event-info-content">
+              <strong id="event-info-location">Local do Evento</strong>
+              <span id="event-info-address">Endereço do local...</span>
+              <a id="event-maps-btn" href="#" target="_blank" style="color:var(--accent-cyan); font-size:0.8rem; display:block; margin-top:0.25rem;">
+                🗺️ Abrir no Google Maps
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notice / Special Info Banner -->
+        <div class="notice-card">
+          <div class="notice-icon">💡</div>
+          <div class="notice-text">
+            <h4>Informações Importantes</h4>
+            <div id="event-special-notice">
+              <p>Traje: Esporte Fino | Estacionamento no local | Confirme sua presença pelo site.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Guest Identification Banner (Search or URL Tokenized) -->
+      <div id="guest-selector-section" class="glass-card" style="display:none;">
+        <div class="guest-welcome-card">
+          <div>
+            <h3>Olá! Por favor, identifique seu convite</h3>
+            <p>Digite seu nome ou telefone para confirmar sua presença no evento.</p>
+          </div>
+          <button id="btn-open-search-modal" class="btn btn-primary">
+            🔍 Buscar Meu Nome
+          </button>
+        </div>
+      </div>
+
+      <!-- RSVP Main Form Card -->
+      <section id="rsvp-form-section" class="glass-card">
+        <div class="guest-welcome-card" style="margin-bottom:1.5rem;">
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <div id="rsvp-guest-avatar" class="guest-avatar">É</div>
+            <div class="guest-meta">
+              <h3 id="rsvp-guest-name">Nome do Convidado</h3>
+              <span id="rsvp-guest-status-badge" class="badge badge-gold">Status: Pendente</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="document.getElementById('search-modal-overlay').classList.add('active')">
+            Trocar
+          </button>
+        </div>
+
+        <form id="rsvp-main-form">
+          <label class="form-label" style="font-size:1.05rem; margin-bottom:0.75rem; color:var(--text-main);">
+            Você poderá comparecer ao evento?
+          </label>
+
+          <!-- Attendance Options Buttons -->
+          <div class="rsvp-choice-group">
+            <label class="rsvp-choice-btn" id="choice-yes-btn">
+              <input type="radio" name="attendance" id="choice-yes" value="CONFIRMED">
+              <span class="rsvp-choice-icon">🎉</span>
+              <span class="rsvp-choice-title" style="color:var(--accent-green);">Sim, com certeza!</span>
+              <span style="font-size:0.8rem; color:var(--text-muted);">Estarei presente para comemorar!</span>
+            </label>
+
+            <label class="rsvp-choice-btn" id="choice-no-btn">
+              <input type="radio" name="attendance" id="choice-no" value="DECLINED">
+              <span class="rsvp-choice-icon">😢</span>
+              <span class="rsvp-choice-title" style="color:var(--accent-red);">Não poderei ir</span>
+              <span style="font-size:0.8rem; color:var(--text-muted);">Infelizmente não poderei comparecer.</span>
+            </label>
+          </div>
+
+          <!-- Companions Details Group (Shown when 'Sim' is selected) -->
+          <div id="companions-details-group" class="companions-section" style="display:none;">
+            <h4 style="margin-bottom:0.75rem; font-size:1rem; color:var(--accent-gold);">
+              👥 Acompanhantes
+            </h4>
+            
+            <div class="form-group">
+              <label class="form-label" for="companions-count">Quantos acompanhantes virão com você?</label>
+              <select id="companions-count" class="form-control">
+                <option value="0">Apenas eu (0 acompanhantes)</option>
+                <option value="1">+1 Acompanhante (2 pessoas no total)</option>
+                <option value="2">+2 Acompanhantes (3 pessoas no total)</option>
+                <option value="3">+3 Acompanhantes (4 pessoas no total)</option>
+                <option value="4">+4 Acompanhantes (5 pessoas no total)</option>
+              </select>
+            </div>
+
+            <!-- Dynamic Input Container for Companion Names -->
+            <div id="companion-names-container"></div>
+          </div>
+
+          <!-- Notes / Message to Host -->
+          <div class="form-group">
+            <label class="form-label" for="rsvp-notes">Mensagem ou Observação ao Anfitrião (opcional):</label>
+            <textarea id="rsvp-notes" class="form-control" placeholder="Deixe um recado especial, sugestão de música ou restrição alimentar..."></textarea>
+          </div>
+
+          <button type="submit" id="rsvp-submit-btn" class="btn btn-primary btn-block" style="padding:1rem;">
+            Confirmar Resposta
+          </button>
+        </form>
+      </section>
+
+      <!-- RSVP Success Card -->
+      <section id="rsvp-success-section" class="glass-card rsvp-success-card" style="display:none;">
+        <div class="success-icon-anim">✓</div>
+        <h2 id="success-title" class="gradient-text" style="font-size:1.8rem; margin-bottom:0.5rem;">Confirmação Registrada!</h2>
+        <p id="success-desc" style="color:var(--text-muted); max-width:480px; margin:0 auto 1.5rem auto;">
+          Sua resposta foi salva e enviada diretamente para a lista do anfitrião.
+        </p>
+
+        <button class="btn btn-secondary" onclick="window.location.reload()">
+          Atualizar ou Alterar Resposta
+        </button>
+      </section>
+
+    </main>
+
+
+    <!-- ====================================================================
+         2. ADMIN DASHBOARD VIEW
+         ==================================================================== -->
+    <main id="view-admin" style="display:none;">
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <h1 class="gradient-text" style="font-size:2rem;">Painel de Controle do Anfitrião</h1>
+          <p style="color:var(--text-muted);">Gerencie seus convidados, envie os convites e acompanhe os dados em tempo real.</p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="window.adminController.testSheetsConnection()">
+            🧪 Testar / Sincronizar Planilha
+          </button>
+          <button class="btn btn-secondary" onclick="document.getElementById('settings-modal-overlay').classList.add('active')">
+            ⚙️ Configurações do Evento
+          </button>
+          <button class="btn btn-gold" onclick="document.getElementById('guide-modal-overlay').classList.add('active')">
+            📖 Conectar Google Sheets
+          </button>
+        </div>
+      </div>
+
+      <!-- Metrics Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-purple">📋</div>
+          <div>
+            <div id="stat-total-guests" class="stat-val">0</div>
+            <div class="stat-lbl">Total de Convites</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-green">✅</div>
+          <div>
+            <div id="stat-confirmed-guests" class="stat-val">0</div>
+            <div class="stat-lbl">Confirmados</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-gold">👥</div>
+          <div>
+            <div id="stat-total-attendees" class="stat-val">0</div>
+            <div class="stat-lbl">Total de Pessoas</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-red">❌</div>
+          <div>
+            <div id="stat-declined-guests" class="stat-val">0</div>
+            <div class="stat-lbl">Recusados</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-gold">⏳</div>
+          <div>
+            <div id="stat-pending-guests" class="stat-val">0</div>
+            <div class="stat-lbl">Pendentes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WhatsApp Guided Dispatch Banner ("Fila de Envio") -->
+      <div id="dispatch-queue-container"></div>
+
+      <!-- Table Toolbar & Filters -->
+      <div class="glass-card" style="padding:1.25rem;">
+        <div class="table-toolbar">
+          <div class="table-search">
+            <input type="text" id="admin-search-input" class="form-control" placeholder="🔍 Buscar por Nome, Telefone ou Acompanhante..." />
+          </div>
+
+          <div class="filter-pills">
+            <button class="pill-btn active" data-filter="ALL">Todos</button>
+            <button class="pill-btn" data-filter="PENDING">Pendentes</button>
+            <button class="pill-btn" data-filter="CONFIRMED">Confirmados</button>
+            <button class="pill-btn" data-filter="DECLINED">Recusados</button>
+          </div>
+
+          <button class="btn btn-primary" onclick="window.adminController.openAddGuestModal()">
+            + Adicionar Convidado
+          </button>
+        </div>
+
+        <!-- Guest List Data Table -->
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Convidado</th>
+                <th>Telefone</th>
+                <th>Status RSVP</th>
+                <th>Convite Enviado (✓)</th>
+                <th>Total Pessoas</th>
+                <th>Acompanhantes</th>
+                <th>Observações</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-table-body">
+              <!-- Rendered dynamically by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>Gerenciador de Convites & Confirmação de Presença (RSVP) &copy; 2026.</p>
+    </footer>
+
+  </div>
+
+
+  <!-- ====================================================================
+       MODALS
+       ==================================================================== -->
+
+  <!-- Modal 1: Guest Search Modal (For Guests) -->
+  <div id="search-modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <button class="modal-close" id="btn-close-search-modal">&times;</button>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Buscar Seu Convite</h3>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">
+        Digite seu nome ou telefone abaixo para localizar seu convite individual:
+      </p>
+
+      <div class="form-group">
+        <input type="text" id="search-guest-input" class="form-control" placeholder="Ex: João Silva ou (11) 99999..." autofocus />
+      </div>
+
+      <div id="search-results-list" style="max-height: 250px; overflow-y: auto; margin-top:1rem;">
+        <p style="color: var(--text-dim); text-align: center; padding: 1rem;">Digite para buscar...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Add/Edit Guest Modal (Admin) -->
+  <div id="guest-modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <button class="modal-close" onclick="document.getElementById('guest-modal-overlay').classList.remove('active')">&times;</button>
+      <h3 id="modal-guest-title" style="font-size:1.4rem; margin-bottom:1.25rem;" class="gradient-text">Convidado</h3>
+
+      <form id="guest-edit-form">
+        <input type="hidden" id="edit-guest-id" />
+
+        <div class="form-group">
+          <label class="form-label" for="edit-guest-name">Nome Completo do Convidado:</label>
+          <input type="text" id="edit-guest-name" class="form-control" placeholder="Ex: João Silva" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-guest-phone">Telefone / WhatsApp (com DDD):</label>
+          <input type="text" id="edit-guest-phone" class="form-control" placeholder="Ex: 5511999998888" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-guest-status">Status Inicial:</label>
+          <select id="edit-guest-status" class="form-control">
+            <option value="Pendente">Pendente</option>
+            <option value="Confirmado">Confirmado</option>
+            <option value="Recusado">Recusado</option>
+          </select>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('guest-modal-overlay').classList.remove('active')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Convidado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Event Settings & Templates Manager Modal (Admin) -->
+  <div id="settings-modal-overlay" class="modal-overlay">
+    <div class="modal-container" style="max-width:680px; max-height:90vh; overflow-y:auto;">
+      <button class="modal-close" onclick="document.getElementById('settings-modal-overlay').classList.remove('active')">&times;</button>
+      <h3 style="font-size:1.4rem; margin-bottom:0.25rem;" class="gradient-text">Configurações do Evento</h3>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Personalize as informações do convite, observações e o endereço público do seu site.</p>
+
+      <form id="settings-edit-form">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Tipo do Evento:</label>
+            <input type="text" id="set-event-type" class="form-control" placeholder="Ex: Aniversário, Formatura, Casamento" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Título do Evento:</label>
+            <input type="text" id="set-event-title" class="form-control" placeholder="Ex: Aniversário de 88 Anos da Mãe" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Subtítulo / Mensagem de Boas-Vindas:</label>
+          <input type="text" id="set-event-subtitle" class="form-control" placeholder="Ex: Venha comemorar conosco!" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Data do Evento:</label>
+            <input type="date" id="set-event-date" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horário:</label>
+            <input type="time" id="set-event-time" class="form-control" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nome do Local:</label>
+          <input type="text" id="set-location-name" class="form-control" placeholder="Ex: Espaço Festa & Celebração" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Endereço Completo:</label>
+          <input type="text" id="set-location-address" class="form-control" placeholder="Ex: Av. Paulista, 1000 - São Paulo" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Link do Google Maps / Waze:</label>
+          <input type="url" id="set-maps-url" class="form-control" placeholder="https://maps.google.com/..." />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Observações / Informações Especiais (Traje, PIX, etc.):</label>
+          <textarea id="set-special-notice" class="form-control" placeholder="Digite orientações aos convidados..."></textarea>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-glass); margin:1.5rem 0;" />
+
+        <h4 style="color:var(--accent-cyan); margin-bottom:0.75rem;">🌐 URL Pública do Site (Para os Convidados)</h4>
+        <div class="form-group">
+          <label class="form-label">Endereço Público do Site (ex: https://meu-evento.vercel.app):</label>
+          <input type="url" id="set-public-site-url" class="form-control" placeholder="https://meu-evento.vercel.app" />
+          <span style="font-size:0.8rem; color:var(--text-dim); display:block; margin-top:0.35rem;">Quando publicado na Vercel/Netlify, cole o link aqui. Essa URL será usada nas mensagens enviadas pelo WhatsApp!</span>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-glass); margin:1.5rem 0;" />
+
+        <h4 style="color:var(--accent-gold); margin-bottom:0.75rem;">📱 Modelo da Mensagem de WhatsApp</h4>
+        <div class="form-group">
+          <label class="form-label">Use as variáveis: <code>{nome}</code>, <code>{link}</code>, <code>{tipo_evento}</code></label>
+          <textarea id="set-message-template" class="form-control" style="min-height:100px;"></textarea>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-glass); margin:1.5rem 0;" />
+
+        <h4 style="color:var(--accent-purple); margin-bottom:0.75rem;">🔗 Webhook do Google Apps Script (Planilha)</h4>
+        <div class="form-group">
+          <label class="form-label">URL do App da Web (Google Apps Script):</label>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+            <input type="url" id="set-webhook-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1; min-width:220px;" />
+            <button type="button" id="btn-test-sheet-connection" class="btn btn-primary btn-sm" style="white-space:nowrap; padding:0.6rem 1.2rem;">🧪 Testar Conexão</button>
+          </div>
+          <span style="font-size:0.8rem; color:var(--text-dim); display:block;">Certifique-se de implantar como "App da Web" e acesso "Qualquer pessoa".</span>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('settings-modal-overlay').classList.remove('active')">Cancelar</button>
+          <button type="submit" class="btn btn-gold">Salvar Configurações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Google Apps Script Setup Guide Modal (Admin) -->
+  <div id="guide-modal-overlay" class="modal-overlay">
+    <div class="modal-container" style="max-width:720px; max-height:90vh; overflow-y:auto;">
+      <button class="modal-close" onclick="document.getElementById('guide-modal-overlay').classList.remove('active')">&times;</button>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Passo a Passo)</h3>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">
+        Código configurado para atualizar a <strong>Coluna F (Sim/Não)</strong>, <strong>Coluna L (Comentário)</strong> e <strong>Coluna I (✓)</strong> sem alterar a Coluna G:
+      </p>
+
+      <div class="code-snippet-box" id="guide-code-box">
+<button class="btn-copy-code" onclick="navigator.clipboard.writeText(document.getElementById('code-snippet-raw').innerText); window.app.showToast('Código copiado!', 'success');">Copiar Código</button>
+<code id="code-snippet-raw">/** @OnlyCurrentDoc */
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = sheet.getDataRange().getValues();
+    if (!data || data.length < 6) return responseJSON({ success: true, guests: [] });
+    var guests = [];
+    for (var i = 5; i < data.length; i++) {
+      var row = data[i];
+      if (!row || row.length < 3) continue;
+      var nameVal = String(row[2] || '').trim();
+      var phoneVal = String(row[9] || '').trim();
+      if (!nameVal && !phoneVal) continue;
+      var rawStatus = String(row[5] || '').trim().toLowerCase();
+      var statusVal = (rawStatus === 'sim' || rawStatus === 'confirmado') ? 'Confirmado' : (rawStatus === 'não' || rawStatus === 'nao' || rawStatus === 'recusado') ? 'Recusado' : 'Pendente';
+      var colIVal = String(row[8] || '').trim();
+      var isSent = colIVal === '✓' || colIVal.toLowerCase() === 'sim';
+      var familyTotal = Number(row[4] || 1);
+      guests.push({
+        id: String(row[1] || (i - 4)), name: nameVal, phone: phoneVal, status: statusVal,
+        sent: isSent, checkSymbol: colIVal || (isSent ? '✓' : ''),
+        companionsCount: 0, familyTotal: familyTotal, notes: String(row[11] || row[10] || '').trim()
+      });
+    }
+    return responseJSON({ success: true, guests: guests });
+  } catch (err) {
+    return responseJSON({ success: false, error: err.toString() });
+  }
+}
+
+function doPost(e) {
+  try {
+    var postData = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = sheet.getDataRange().getValues();
+    var guestId = String(postData.id || '');
+    var name = String(postData.name || '');
+    var phone = String(postData.phone || '');
+    var status = String(postData.status || '');
+    var sent = postData.sent;
+    var companionNames = String(postData.companionNames || '').trim();
+    var notes = String(postData.notes || '').trim();
+    var rowIndex = -1;
+    for (var i = 5; i < data.length; i++) {
+      if ((guestId && String(data[i][1]) === guestId) || (name && String(data[i][2]).toLowerCase().trim() === name.toLowerCase().trim())) {
+        rowIndex = i + 1; break;
+      }
+    }
+    if (rowIndex !== -1) {
+      if (name) sheet.getRange(rowIndex, 3).setValue(name);
+      if (phone) sheet.getRange(rowIndex, 10).setValue(phone);
+      if (status) {
+        var sLower = String(status).toLowerCase().trim();
+        if (sLower === 'confirmado' || sLower === 'sim') sheet.getRange(rowIndex, 6).setValue('Sim');
+        else if (sLower === 'recusado' || sLower === 'não' || sLower === 'nao') sheet.getRange(rowIndex, 6).setValue('Não');
+      }
+      var finalComment = notes;
+      if (companionNames) finalComment = (finalComment ? finalComment + ' | Acompanhantes: ' : 'Acompanhantes: ') + companionNames;
+      if (finalComment) sheet.getRange(rowIndex, 12).setValue(finalComment);
+      if (sent === true) sheet.getRange(rowIndex, 9).setValue('✓');
+    }
+    return responseJSON({ success: true, message: 'Sucesso!' });
+  } catch (err) {
+    return responseJSON({ success: false, error: err.toString() });
+  }
+}
+
+function responseJSON(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}</code>
+      </div>
+
+      <div style="text-align:right; margin-top:1.5rem;">
+        <button class="btn btn-primary" onclick="document.getElementById('guide-modal-overlay').classList.remove('active')">Entendi!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: WhatsApp Confirmation Modal -->
+  <div id="wa-confirm-modal-overlay" class="modal-overlay">
+    <div class="modal-container" style="max-width:500px; text-align:center;">
+      <div style="font-size:3rem; margin-bottom:0.5rem;">📱</div>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Confirmar Envio no WhatsApp</h3>
+      <p style="color:var(--text-muted); font-size:0.95rem; margin-bottom:1.5rem;">
+        Você confirmou o envio do convite no WhatsApp para <strong id="confirm-wa-guest-name" style="color:var(--text-main);"></strong> (<span id="confirm-wa-guest-phone" style="font-family:monospace; color:var(--accent-gold);"></span>)?
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <button id="btn-confirm-wa-sent" class="btn btn-whatsapp btn-block" style="padding:0.9rem;" onclick="window.adminController.confirmWhatsAppSentSuccess()">
+          ✅ Sim, Confirmar Envio (Gravar ✓ na Coluna I)
+        </button>
+        <button class="btn btn-secondary btn-block" onclick="window.adminController.cancelWhatsAppSent()">
+          ❌ Ainda não / Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script src="js/sheets.js"></script>
+  <script src="js/rsvp.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
