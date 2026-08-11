@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   eventSubtitle: 'Venha comemorar esta data tão especial conosco!',
   eventDate: '2026-10-17',
   eventTime: '18:30',
-  locationName: 'Gramercy Park - Edificio ONE - Sala de Festas Principal',
+  locationName: 'Gramercy Park - Edificio ONE - Salão de Festas Principal',
   locationAddress: 'Avenida Parkinson 42 - Gramercy Park - Barueri - SP',
   mapsUrl: 'https://maps.app.goo.gl/qkGN112BtbveD2r7A',
   specialNotice: 'RSVP - Confirme sua presença até o dia 30/09 por favor. Obs.: devido a limitação de vagas internas, o estacionamento dos veículos deve ser feito fora do condomínio Gramercy Park',
@@ -31,7 +31,6 @@ class StorageEngine {
   }
 
   init() {
-    // Sobrescreve/atualiza as configurações para garantir os dados oficiais da imagem
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
   }
 
