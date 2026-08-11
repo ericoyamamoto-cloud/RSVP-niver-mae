@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN DASHBOARD MODULE (GARANTIA DE LINKS PURAMENTE DE CONVIDADO)
+   ADMIN DASHBOARD MODULE (CONFIGURAÇÕES 100% DINÂMICAS & WHATSAPP TEMPLATES)
    ========================================================================== */
 
 class AdminController {
@@ -161,6 +161,7 @@ class AdminController {
       .replace(/{nome}/g, currentGuest.name)
       .replace(/{link}/g, guestLink)
       .replace(/{tipo_evento}/g, settings.eventType || 'evento')
+      .replace(/{titulo_evento}/g, settings.eventTitle || 'Aniversário')
       .replace(/{data}/g, settings.eventDate || '');
 
     const hasValidPhone = currentGuest.phone && currentGuest.phone.replace(/\D/g, '').length >= 8;
@@ -218,6 +219,7 @@ class AdminController {
       .replace(/{nome}/g, guest.name)
       .replace(/{link}/g, guestLink)
       .replace(/{tipo_evento}/g, settings.eventType || 'evento')
+      .replace(/{titulo_evento}/g, settings.eventTitle || 'Aniversário')
       .replace(/{data}/g, settings.eventDate || '');
 
     const encodedMsg = encodeURIComponent(msg);
@@ -490,9 +492,9 @@ class AdminController {
     const modal = document.getElementById('settings-modal-overlay');
     if (modal) modal.classList.remove('active');
 
-    window.app.showToast('Sincronizando com a planilha...', 'success');
+    window.app.showToast('Configurações do Evento atualizadas com sucesso!', 'success');
+    if (window.rsvpController) window.rsvpController.renderEventDetails();
     await this.refreshDataFromSheets();
-    window.app.showToast('Configurações salvas e dados atualizados!', 'success');
   }
 }
 

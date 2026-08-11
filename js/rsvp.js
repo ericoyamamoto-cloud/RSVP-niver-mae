@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (COM CONTAGEM REGRESSIVA EM TEMPO REAL & EVENT DETAILS)
+   GUEST RSVP MODULE (100% DINÂMICO A PARTIR DAS CONFIGURAÇÕES DO EVENTO)
    ========================================================================== */
 
 class RsvpController {
@@ -19,7 +19,7 @@ class RsvpController {
   renderEventDetails() {
     const settings = window.storageEngine.getSettings();
 
-    // Event Hero Banner
+    // Event Hero Banner (100% Dinâmico das Configurações do Evento)
     const heroTitleEl = document.getElementById('event-hero-title');
     const heroSubtitleEl = document.getElementById('event-hero-subtitle');
     const heroBadgeEl = document.getElementById('event-hero-badge');
@@ -28,7 +28,7 @@ class RsvpController {
     if (heroSubtitleEl) heroSubtitleEl.textContent = settings.eventSubtitle || 'Venha comemorar esta data tão especial conosco!';
     if (heroBadgeEl) heroBadgeEl.textContent = settings.eventType || 'Aniversário / Festa Social';
 
-    // Event Info Grid (Formato DD/MM/AAAA)
+    // Event Info Grid (100% Dinâmico no Formato DD/MM/AAAA)
     const eventDateEl = document.getElementById('event-info-date');
     const eventTimeEl = document.getElementById('event-info-time');
     const eventLocationEl = document.getElementById('event-info-location');
@@ -44,24 +44,24 @@ class RsvpController {
         const dayOfWeekStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
         const capitalizedWeekday = dayOfWeekStr.charAt(0).toUpperCase() + dayOfWeekStr.slice(1);
         
-        // Exibe: "Domingo, 20/09/2026" (Formato DD/MM/AAAA)
+        // Exibe: "Sábado, 17/10/2026" (Formato DD/MM/AAAA)
         eventDateEl.textContent = `${capitalizedWeekday}, ${day}/${month}/${year}`;
       } else {
         eventDateEl.textContent = settings.eventDate;
       }
     }
 
-    if (eventTimeEl) eventTimeEl.textContent = (settings.eventTime || '19:30') + 'h';
-    if (eventLocationEl) eventLocationEl.textContent = settings.locationName || 'Espaço Festa & Celebração';
-    if (eventAddressEl) eventAddressEl.textContent = settings.locationAddress || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP';
-    if (eventMapsBtn && settings.mapsUrl) eventMapsBtn.href = settings.mapsUrl;
+    if (eventTimeEl) eventTimeEl.textContent = (settings.eventTime || '18:30') + 'h';
+    if (eventLocationEl) eventLocationEl.textContent = settings.locationName || 'Gramercy Park - Edificio ONE - Salão de Festas Principal';
+    if (eventAddressEl) eventAddressEl.textContent = settings.locationAddress || 'Avenida Parkinson 42 - Gramercy Park - Barueri - SP';
+    if (eventMapsBtn) eventMapsBtn.href = settings.mapsUrl || 'https://maps.app.goo.gl/qkGN112BtbveD2r7A';
 
     if (specialNoticeEl && settings.specialNotice) {
       specialNoticeEl.innerHTML = `<p>${settings.specialNotice}</p>`;
     }
 
-    // Inicia a Contagem Regressiva em tempo real
-    this.startCountdownTimer(settings.eventDate || '2026-09-20', settings.eventTime || '19:30');
+    // Inicia a Contagem Regressiva em tempo real com os valores dinâmicos
+    this.startCountdownTimer(settings.eventDate || '2026-10-17', settings.eventTime || '18:30');
   }
 
   startCountdownTimer(dateStr, timeStr) {
@@ -74,7 +74,7 @@ class RsvpController {
       if (dateParts.length !== 3) return;
 
       const [year, month, day] = dateParts.map(n => parseInt(n, 10));
-      let hours = 19, minutes = 30;
+      let hours = 18, minutes = 30;
 
       if (timeStr) {
         const timeParts = timeStr.split(':');

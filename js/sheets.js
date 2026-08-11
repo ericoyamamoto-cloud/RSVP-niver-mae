@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (DADOS OFICIAIS DO EVENTO)
+   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (100% DINÂMICO & PERSISTENTE)
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -31,7 +31,10 @@ class StorageEngine {
   }
 
   init() {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+    // SÓ define DEFAULT_SETTINGS se NENHUMA configuração existir ainda no localStorage
+    if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+    }
   }
 
   getSettings() {
