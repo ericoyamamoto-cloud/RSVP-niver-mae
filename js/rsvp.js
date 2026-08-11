@@ -1,11 +1,12 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (FORMATO DE DATA AJUSTADO PARA DD/MM/AAAA)
+   GUEST RSVP MODULE (COM CONTAGEM REGRESSIVA EM TEMPO REAL & EVENT DETAILS)
    ========================================================================== */
 
 class RsvpController {
   constructor() {
     this.currentGuest = null;
     this.allGuests = [];
+    this.timerInterval = null;
   }
 
   async init() {
@@ -23,11 +24,11 @@ class RsvpController {
     const heroSubtitleEl = document.getElementById('event-hero-subtitle');
     const heroBadgeEl = document.getElementById('event-hero-badge');
 
-    if (heroTitleEl) heroTitleEl.textContent = settings.eventTitle;
-    if (heroSubtitleEl) heroSubtitleEl.textContent = settings.eventSubtitle;
-    if (heroBadgeEl) heroBadgeEl.textContent = settings.eventType;
+    if (heroTitleEl) heroTitleEl.textContent = settings.eventTitle || 'Aniversário de 88 Anos';
+    if (heroSubtitleEl) heroSubtitleEl.textContent = settings.eventSubtitle || 'Venha comemorar esta data tão especial conosco!';
+    if (heroBadgeEl) heroBadgeEl.textContent = settings.eventType || 'Aniversário / Festa Social';
 
-    // Event Info Grid (Format DD/MM/AAAA)
+    // Event Info Grid (Formato DD/MM/AAAA)
     const eventDateEl = document.getElementById('event-info-date');
     const eventTimeEl = document.getElementById('event-info-time');
     const eventLocationEl = document.getElementById('event-info-location');
@@ -49,14 +50,70 @@ class RsvpController {
         eventDateEl.textContent = settings.eventDate;
       }
     }
-    if (eventTimeEl) eventTimeEl.textContent = settings.eventTime + 'h';
-    if (eventLocationEl) eventLocationEl.textContent = settings.locationName;
-    if (eventAddressEl) eventAddressEl.textContent = settings.locationAddress;
+
+    if (eventTimeEl) eventTimeEl.textContent = (settings.eventTime || '19:30') + 'h';
+    if (eventLocationEl) eventLocationEl.textContent = settings.locationName || 'Espaço Festa & Celebração';
+    if (eventAddressEl) eventAddressEl.textContent = settings.locationAddress || 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP';
     if (eventMapsBtn && settings.mapsUrl) eventMapsBtn.href = settings.mapsUrl;
 
     if (specialNoticeEl && settings.specialNotice) {
       specialNoticeEl.innerHTML = `<p>${settings.specialNotice}</p>`;
     }
+
+    // Inicia a Contagem Regressiva em tempo real
+    this.startCountdownTimer(settings.eventDate || '2026-09-20', settings.eventTime || '19:30');
+  }
+
+  startCountdownTimer(dateStr, timeStr) {
+    if (this.timerInterval) clearInterval(this.timerInterval);
+
+    const updateTimer = () => {
+      if (!dateStr) return;
+
+      const dateParts = dateStr.split('-');
+      if (dateParts.length !== 3) return;
+
+      const [year, month, day] = dateParts.map(n => parseInt(n, 10));
+      let hours = 19, minutes = 30;
+
+      if (timeStr) {
+        const timeParts = timeStr.split(':');
+        if (timeParts.length >= 2) {
+          hours = parseInt(timeParts[0], 10);
+          minutes = parseInt(timeParts[1], 10);
+        }
+      }
+
+      const targetDate = new Date(year, month - 1, day, hours, minutes, 0).getTime();
+      const now = new Date().getTime();
+      const difference = targetDate - now;
+
+      const timerDaysEl = document.getElementById('timer-days');
+      const timerHoursEl = document.getElementById('timer-hours');
+      const timerMinEl = document.getElementById('timer-minutes');
+      const timerSecEl = document.getElementById('timer-seconds');
+
+      if (difference <= 0) {
+        if (timerDaysEl) timerDaysEl.textContent = '00';
+        if (timerHoursEl) timerHoursEl.textContent = '00';
+        if (timerMinEl) timerMinEl.textContent = '00';
+        if (timerSecEl) timerSecEl.textContent = '00';
+        return;
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hoursLeft = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const secondsLeft = Math.floor((difference % (1000 * 60)) / 1000);
+
+      if (timerDaysEl) timerDaysEl.textContent = String(days).padStart(2, '0');
+      if (timerHoursEl) timerHoursEl.textContent = String(hoursLeft).padStart(2, '0');
+      if (timerMinEl) timerMinEl.textContent = String(minutesLeft).padStart(2, '0');
+      if (timerSecEl) timerSecEl.textContent = String(secondsLeft).padStart(2, '0');
+    };
+
+    updateTimer();
+    this.timerInterval = setInterval(updateTimer, 1000);
   }
 
   detectGuestFromUrl() {

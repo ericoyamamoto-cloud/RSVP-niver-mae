@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (COM SUPORTE A URL DO SITE PÚBLICO)
+   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (DEFAULT SETTINGS SINCRONIZADOS)
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_SETTINGS = {
-  eventType: 'Aniversário',
+  eventType: 'Aniversário / Festa Social',
   eventTitle: 'Aniversário de 88 Anos',
   eventSubtitle: 'Venha comemorar esta data tão especial conosco!',
   eventDate: '2026-09-20',
@@ -18,16 +18,12 @@ const DEFAULT_SETTINGS = {
   locationAddress: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP',
   mapsUrl: 'https://maps.google.com/?q=Av.+Paulista,+1000,+Sao+Paulo',
   specialNotice: 'Traje: Esporte Fino | Estacionamento no local | Confirme sua presença pelo site.',
-  webhookUrl: '', // URL do Google Apps Script
-  publicSiteUrl: '', // URL do site publicado (ex: https://meu-evento.vercel.app)
+  webhookUrl: '',
+  publicSiteUrl: 'https://rsvp-chi-umber.vercel.app',
   messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {tipo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
 };
 
-const INITIAL_DEMO_GUESTS = [
-  { id: '1', name: 'João Silva', phone: '5511999998888', status: 'Pendente', sent: false, checkSymbol: '', companionsCount: 0, companionNames: '', notes: '', updatedAt: '' },
-  { id: '2', name: 'Maria Santos', phone: '5511988887777', status: 'Confirmado', sent: true, checkSymbol: '✓', companionsCount: 2, companionNames: 'Lucas Santos, Clara Santos', notes: 'Chegaremos às 20h!', updatedAt: '10/08/2026 15:30' },
-  { id: '3', name: 'Carlos Oliveira', phone: '5511977776666', status: 'Recusado', sent: true, checkSymbol: '✓', companionsCount: 0, companionNames: '', notes: 'Estarei viajando nessa data, parabéns!', updatedAt: '10/08/2026 16:15' }
-];
+const INITIAL_DEMO_GUESTS = [];
 
 class StorageEngine {
   constructor() {
@@ -37,9 +33,6 @@ class StorageEngine {
   init() {
     if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.GUESTS)) {
-      localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(INITIAL_DEMO_GUESTS));
     }
   }
 
