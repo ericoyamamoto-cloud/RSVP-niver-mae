@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN DASHBOARD MODULE (CORREÇÃO E ROBUSTES DO BOTÃO DE CONFIRMAÇÃO DE ENVIO)
+   ADMIN DASHBOARD MODULE (GARANTIA DE LINKS PURAMENTE DE CONVIDADO)
    ========================================================================== */
 
 class AdminController {
@@ -27,6 +27,7 @@ class AdminController {
     const settings = window.storageEngine.getSettings();
     if (settings.publicSiteUrl && settings.publicSiteUrl.trim().startsWith('http')) {
       let cleanUrl = settings.publicSiteUrl.trim();
+      cleanUrl = cleanUrl.replace('admin.html', 'index.html');
       if (!cleanUrl.endsWith('.html') && !cleanUrl.endsWith('/')) {
         cleanUrl += '/';
       }
