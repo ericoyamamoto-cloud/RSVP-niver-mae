@@ -11,6 +11,9 @@ class AdminController {
   }
 
   async init() {
+    // Sempre vincula os eventos do formulário de PIN PRIMEIRO para evitar submit normal do HTML
+    this.bindPinEvents();
+
     // Verifica se o anfitrião está autenticado pelo PIN
     if (!window.storageEngine.isAdminAuthenticated()) {
       this.showPinLockModal();
@@ -23,9 +26,26 @@ class AdminController {
     this.bindEvents();
   }
 
+  bindPinEvents() {
+    const pinForm = document.getElementById('admin-pin-form');
+    if (pinForm && !pinForm.dataset.bound) {
+      pinForm.dataset.bound = 'true';
+      pinForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const pinVal = document.getElementById('admin-pin-input')?.value;
+        this.verifyAdminPin(pinVal);
+      });
+    }
+  }
+
   showPinLockModal() {
     const lockOverlay = document.getElementById('admin-pin-lock-overlay');
     if (lockOverlay) lockOverlay.classList.add('active');
+    const inputEl = document.getElementById('admin-pin-input');
+    if (inputEl) {
+      setTimeout(() => inputEl.focus(), 100);
+    }
   }
 
   hidePinLockModal() {
@@ -40,6 +60,11 @@ class AdminController {
     if (String(enteredPin).trim() === String(correctPin).trim()) {
       window.storageEngine.setAdminAuthenticated(true);
       window.app.showToast('Acesso concedido ao Painel do Anfitrião!', 'success');
+      this.hidePinLockModal();
+      
+      // Garante a exibição da view do admin
+      if (window.app) window.app.switchView('admin');
+      
       this.init();
       return true;
     } else {
@@ -145,7 +170,6 @@ class AdminController {
     const baseUrl = this.getGuestBaseUrl();
 
     tableBody.innerHTML = filtered.map(g => {
-      // Usa CÓDIGO ÚNICO ALEATÓRIO (?code=K8X92P) para evitar ID Enumeration
       const paramKey = g.code ? `code=${g.code}` : `id=${g.id}`;
       const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
 
@@ -200,7 +224,6 @@ class AdminController {
     const settings = window.storageEngine.getSettings();
     const baseUrl = this.getGuestBaseUrl();
     
-    // Link seguro com Código Único Alfanumérico (?code=K8X92P)
     const paramKey = currentGuest.code ? `code=${currentGuest.code}` : `id=${currentGuest.id}`;
     const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
 
@@ -352,14 +375,7 @@ class AdminController {
   }
 
   bindEvents() {
-    const pinForm = document.getElementById('admin-pin-form');
-    if (pinForm) {
-      pinForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const pinVal = document.getElementById('admin-pin-input')?.value;
-        this.verifyAdminPin(pinVal);
-      });
-    }
+    this.bindPinEvents();
 
     const searchInp = document.getElementById('admin-search-input');
     if (searchInp) {
