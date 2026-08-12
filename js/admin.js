@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN DASHBOARD MODULE (COM AUTENTICAÇÃO POR PIN & CÓDIGOS ÚNICOS DA COLUNA M)
+   ADMIN DASHBOARD MODULE (COM ANTI-BRUTEFORCE & SANITIZAÇÃO ANTI-XSS)
    ========================================================================== */
 
 class AdminController {
@@ -8,6 +8,8 @@ class AdminController {
     this.activeFilter = 'ALL';
     this.searchQuery = '';
     this.pendingConfirmGuest = null;
+    this.pinAttemptKey = 'rsvp_pin_attempts_v1';
+    this.pinLockoutKey = 'rsvp_pin_lockout_until_v1';
   }
 
   async init() {
@@ -37,12 +39,51 @@ class AdminController {
     }
   }
 
+  checkPinLockoutStatus() {
+    const lockoutUntil = parseInt(localStorage.getItem(this.pinLockoutKey) || '0', 10);
+    const now = Date.now();
+    if (lockoutUntil && now < lockoutUntil) {
+      const secondsLeft = Math.ceil((lockoutUntil - now) / 1000);
+      const minutes = Math.floor(secondsLeft / 60);
+      const seconds = secondsLeft % 60;
+      const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      
+      const pinSubmitBtn = document.querySelector('#admin-pin-form button[type="submit"]');
+      const pinInput = document.getElementById('admin-pin-input');
+      
+      if (pinSubmitBtn) {
+        pinSubmitBtn.disabled = true;
+        pinSubmitBtn.innerHTML = `⏳ Aguarde ${formattedTime} (Bloqueado)`;
+      }
+      if (pinInput) pinInput.disabled = true;
+      return true;
+    } else {
+      localStorage.removeItem(this.pinLockoutKey);
+      const pinSubmitBtn = document.querySelector('#admin-pin-form button[type="submit"]');
+      const pinInput = document.getElementById('admin-pin-input');
+      if (pinSubmitBtn) {
+        pinSubmitBtn.disabled = false;
+        pinSubmitBtn.innerHTML = '🔓 Desbloquear Painel';
+      }
+      if (pinInput) pinInput.disabled = false;
+      return false;
+    }
+  }
+
   showPinLockModal() {
     const lockOverlay = document.getElementById('admin-pin-lock-overlay');
     if (lockOverlay) lockOverlay.classList.add('active');
-    const inputEl = document.getElementById('admin-pin-input');
-    if (inputEl) {
-      setTimeout(() => inputEl.focus(), 100);
+    
+    if (!this.checkPinLockoutStatus()) {
+      const inputEl = document.getElementById('admin-pin-input');
+      if (inputEl) setTimeout(() => inputEl.focus(), 100);
+    } else {
+      if (this.lockoutInterval) clearInterval(this.lockoutInterval);
+      this.lockoutInterval = setInterval(() => {
+        if (!this.checkPinLockoutStatus()) {
+          clearInterval(this.lockoutInterval);
+        }
+      }, 1000);
     }
   }
 
@@ -52,10 +93,17 @@ class AdminController {
   }
 
   verifyAdminPin(enteredPin) {
+    if (this.checkPinLockoutStatus()) {
+      window.app.showToast('Muitas tentativas incorretas. Aguarde o tempo de bloqueio.', 'error');
+      return false;
+    }
+
     const settings = window.storageEngine.getSettings();
     const correctPin = settings.adminPin || '8888';
 
     if (String(enteredPin).trim() === String(correctPin).trim()) {
+      localStorage.removeItem(this.pinAttemptKey);
+      localStorage.removeItem(this.pinLockoutKey);
       window.storageEngine.setAdminAuthenticated(true);
       window.app.showToast('Acesso concedido ao Painel do Anfitrião!', 'success');
       this.hidePinLockModal();
@@ -65,11 +113,22 @@ class AdminController {
       this.init();
       return true;
     } else {
-      window.app.showToast('PIN incorreto. Tente novamente.', 'error');
-      const inputEl = document.getElementById('admin-pin-input');
-      if (inputEl) {
-        inputEl.value = '';
-        inputEl.focus();
+      let attempts = parseInt(localStorage.getItem(this.pinAttemptKey) || '0', 10) + 1;
+      localStorage.setItem(this.pinAttemptKey, String(attempts));
+
+      if (attempts >= 5) {
+        const lockoutTime = Date.now() + (5 * 60 * 1000); // Bloqueia por 5 minutos
+        localStorage.setItem(this.pinLockoutKey, String(lockoutTime));
+        localStorage.setItem(this.pinAttemptKey, '0');
+        window.app.showToast('5 tentativas incorretas. Formulário bloqueado por 5 minutos por segurança!', 'error');
+        this.showPinLockModal();
+      } else {
+        window.app.showToast(`PIN incorreto. Tentativa ${attempts} de 5.`, 'error');
+        const inputEl = document.getElementById('admin-pin-input');
+        if (inputEl) {
+          inputEl.value = '';
+          inputEl.focus();
+        }
       }
       return false;
     }
@@ -78,6 +137,28 @@ class AdminController {
   logoutAdmin() {
     window.storageEngine.setAdminAuthenticated(false);
     window.location.href = 'index.html';
+  }
+
+  sanitizeInput(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+
+  maskPhone(phoneStr) {
+    if (!phoneStr) return '';
+    const digits = phoneStr.replace(/\D/g, '');
+    if (digits.length >= 10) {
+      const ddd = digits.substring(0, 2);
+      const lastFour = digits.substring(digits.length - 4);
+      return `(${ddd}) 9****-${lastFour}`;
+    }
+    return phoneStr;
   }
 
   async refreshDataFromSheets() {
@@ -168,7 +249,6 @@ class AdminController {
     const baseUrl = this.getGuestBaseUrl();
 
     tableBody.innerHTML = filtered.map(g => {
-      // Usa CÓDIGO ÚNICO DA COLUNA M (?code=K8X92P) para precisão absoluta
       const guestLink = baseUrl.includes('?') ? `${baseUrl}&code=${g.code}` : `${baseUrl}?code=${g.code}`;
 
       const statusBadge = 
@@ -180,15 +260,19 @@ class AdminController {
         '<span class="badge badge-green" style="font-size: 0.9rem; font-weight:800;" title="Convite Enviado com Sucesso">✓ (Enviado)</span>' : 
         '<span class="badge badge-gold" style="font-size: 0.75rem;">Pendente</span>';
 
+      const safeName = this.sanitizeInput(g.name);
+      const safeCompanions = this.sanitizeInput(g.companionNames || '-');
+      const safeNotes = this.sanitizeInput(g.notes || '-');
+
       return `
         <tr>
-          <td><strong>${g.name}</strong> <span style="font-size:0.75rem; color:var(--accent-gold); font-family:monospace;">[${g.code || '...'}]</span></td>
+          <td><strong>${safeName}</strong> <span style="font-size:0.75rem; color:var(--accent-gold); font-family:monospace;">[${g.code || '...'}]</span></td>
           <td>${g.phone ? `<span style="font-family:monospace;">${g.phone}</span>` : '<span style="color:var(--accent-red); font-size:0.8rem;">⚠️ Sem celular</span>'}</td>
           <td>${statusBadge}</td>
           <td>${sentBadge}</td>
           <td>${g.status === 'Confirmado' ? (1 + (g.companionsCount || 0)) : '-'}</td>
-          <td>${g.companionNames || '-'}</td>
-          <td><span style="font-size:0.85rem; color:var(--text-muted);">${g.notes || '-'}</span></td>
+          <td>${safeCompanions}</td>
+          <td><span style="font-size:0.85rem; color:var(--text-muted);">${safeNotes}</span></td>
           <td>
             <div class="table-action-btns">
               <button class="btn btn-sm btn-whatsapp" title="Enviar Convite no WhatsApp" onclick="window.adminController.startWhatsAppInviteFlow('${g.id}')">📱 Enviar</button>
@@ -221,13 +305,11 @@ class AdminController {
     const currentGuest = pendingUnsent[0];
     const settings = window.storageEngine.getSettings();
     const baseUrl = this.getGuestBaseUrl();
-    
-    // Link seguro com Código Único da Coluna M (?code=K8X92P)
     const guestLink = baseUrl.includes('?') ? `${baseUrl}&code=${currentGuest.code}` : `${baseUrl}?code=${currentGuest.code}`;
 
     let msg = settings.messageTemplate || DEFAULT_SETTINGS.messageTemplate;
     msg = msg
-      .replace(/{nome}/g, currentGuest.name)
+      .replace(/{nome}/g, this.sanitizeInput(currentGuest.name))
       .replace(/{link}/g, guestLink)
       .replace(/{tipo_evento}/g, settings.eventType || 'evento')
       .replace(/{titulo_evento}/g, settings.eventTitle || 'Aniversário')
@@ -239,7 +321,7 @@ class AdminController {
       <div class="dispatch-banner">
         <div class="dispatch-info">
           <h3>📱 Fila de Envio do WhatsApp (${pendingUnsent.length} pendentes)</h3>
-          <p>Próximo convidado: <strong style="color:var(--text-main); font-size:1.1rem;">${currentGuest.name}</strong> (${currentGuest.phone ? `<span style="font-family:monospace; color:var(--accent-gold);">${currentGuest.phone}</span>` : '<span style="color:var(--accent-red);">⚠️ Celular Não Informado</span>'})</p>
+          <p>Próximo convidado: <strong style="color:var(--text-main); font-size:1.1rem;">${this.sanitizeInput(currentGuest.name)}</strong> (${currentGuest.phone ? `<span style="font-family:monospace; color:var(--accent-gold);">${currentGuest.phone}</span>` : '<span style="color:var(--accent-red);">⚠️ Celular Não Informado</span>'})</p>
           <div class="dispatch-preview-box" style="margin-top:0.75rem;">${msg}</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:0.5rem; min-width:200px;">
@@ -488,9 +570,12 @@ class AdminController {
 
   async saveGuestFromModal() {
     const id = document.getElementById('edit-guest-id').value;
-    const name = document.getElementById('edit-guest-name').value.trim();
-    const phone = document.getElementById('edit-guest-phone').value.trim();
+    const rawName = document.getElementById('edit-guest-name').value.trim();
+    const rawPhone = document.getElementById('edit-guest-phone').value.trim();
     const status = document.getElementById('edit-guest-status').value;
+
+    const name = this.sanitizeInput(rawName);
+    const phone = this.sanitizeInput(rawPhone);
 
     if (!name) {
       window.app.showToast('Informe o nome do convidado.', 'error');
@@ -531,15 +616,15 @@ class AdminController {
 
   async saveSettingsFromModal() {
     const newSettings = {
-      eventType: document.getElementById('set-event-type').value.trim(),
-      eventTitle: document.getElementById('set-event-title').value.trim(),
-      eventSubtitle: document.getElementById('set-event-subtitle').value.trim(),
+      eventType: this.sanitizeInput(document.getElementById('set-event-type').value.trim()),
+      eventTitle: this.sanitizeInput(document.getElementById('set-event-title').value.trim()),
+      eventSubtitle: this.sanitizeInput(document.getElementById('set-event-subtitle').value.trim()),
       eventDate: document.getElementById('set-event-date').value.trim(),
       eventTime: document.getElementById('set-event-time').value.trim(),
-      locationName: document.getElementById('set-location-name').value.trim(),
-      locationAddress: document.getElementById('set-location-address').value.trim(),
+      locationName: this.sanitizeInput(document.getElementById('set-location-name').value.trim()),
+      locationAddress: this.sanitizeInput(document.getElementById('set-location-address').value.trim()),
       mapsUrl: document.getElementById('set-maps-url').value.trim(),
-      specialNotice: document.getElementById('set-special-notice').value.trim(),
+      specialNotice: this.sanitizeInput(document.getElementById('set-special-notice').value.trim()),
       webhookUrl: document.getElementById('set-webhook-url').value.trim(),
       publicSiteUrl: document.getElementById('set-public-site-url').value.trim(),
       adminPin: document.getElementById('set-admin-pin').value.trim() || '8888',

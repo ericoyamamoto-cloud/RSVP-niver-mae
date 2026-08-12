@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (ISOLAMENTO SEGURO DE CONVIDADO VIA COLUNA M)
+   GUEST RSVP MODULE (COM ISOLAMENTO SEGURO, ANTI-XSS & MASCARAMENTO)
    ========================================================================== */
 
 class RsvpController {
@@ -13,7 +13,6 @@ class RsvpController {
     const urlParams = new URLSearchParams(window.location.search);
     const guestCode = urlParams.get('code') || urlParams.get('id');
 
-    // Se o convidado veio por um link individual com Código Único da Coluna M (?code=K8X92P)
     if (guestCode) {
       const singleList = await window.storageEngine.fetchGuests(guestCode);
       if (Array.isArray(singleList) && singleList.length > 0) {
@@ -29,10 +28,31 @@ class RsvpController {
     this.bindEvents();
   }
 
+  sanitizeInput(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+
+  maskPhone(phoneStr) {
+    if (!phoneStr) return '';
+    const digits = phoneStr.replace(/\D/g, '');
+    if (digits.length >= 10) {
+      const ddd = digits.substring(0, 2);
+      const lastFour = digits.substring(digits.length - 4);
+      return `(${ddd}) 9****-${lastFour}`;
+    }
+    return phoneStr;
+  }
+
   renderEventDetails() {
     const settings = window.storageEngine.getSettings();
 
-    // Event Hero Banner (100% Dinâmico das Configurações do Evento)
     const heroTitleEl = document.getElementById('event-hero-title');
     const heroSubtitleEl = document.getElementById('event-hero-subtitle');
     const heroBadgeEl = document.getElementById('event-hero-badge');
@@ -41,7 +61,6 @@ class RsvpController {
     if (heroSubtitleEl) heroSubtitleEl.textContent = settings.eventSubtitle || 'Venha comemorar esta data tão especial conosco!';
     if (heroBadgeEl) heroBadgeEl.textContent = settings.eventType || 'Aniversário / Festa Social';
 
-    // Event Info Grid (100% Dinâmico no Formato DD/MM/AAAA)
     const eventDateEl = document.getElementById('event-info-date');
     const eventTimeEl = document.getElementById('event-info-time');
     const eventLocationEl = document.getElementById('event-info-location');
@@ -69,10 +88,9 @@ class RsvpController {
     if (eventMapsBtn) eventMapsBtn.href = settings.mapsUrl || 'https://maps.app.goo.gl/qkGN112BtbveD2r7A';
 
     if (specialNoticeEl && settings.specialNotice) {
-      specialNoticeEl.innerHTML = `<p>${settings.specialNotice}</p>`;
+      specialNoticeEl.innerHTML = `<p>${this.sanitizeInput(settings.specialNotice)}</p>`;
     }
 
-    // Inicia a Contagem Regressiva em tempo real com os valores dinâmicos
     this.startCountdownTimer(settings.eventDate || '2026-10-17', settings.eventTime || '18:30');
   }
 
@@ -172,19 +190,17 @@ class RsvpController {
     if (rsvpSuccessSection) rsvpSuccessSection.style.display = 'none';
     if (rsvpFormSection) rsvpFormSection.style.display = 'block';
 
-    // Populate guest identity UI
     const guestNameEl = document.getElementById('rsvp-guest-name');
     const guestAvatarEl = document.getElementById('rsvp-guest-avatar');
     const guestStatusBadgeEl = document.getElementById('rsvp-guest-status-badge');
 
-    if (guestNameEl) guestNameEl.textContent = guest.name;
+    if (guestNameEl) guestNameEl.textContent = this.sanitizeInput(guest.name);
     if (guestAvatarEl) guestAvatarEl.textContent = guest.name.charAt(0).toUpperCase();
     if (guestStatusBadgeEl) {
       guestStatusBadgeEl.textContent = `Status: ${guest.status || 'Pendente'}`;
       guestStatusBadgeEl.className = `badge ${guest.status === 'Confirmado' ? 'badge-green' : guest.status === 'Recusado' ? 'badge-red' : 'badge-gold'}`;
     }
 
-    // Pre-fill existing RSVP data
     const choiceYes = document.getElementById('choice-yes-btn');
     const choiceNo = document.getElementById('choice-no-btn');
     const radioYes = document.getElementById('choice-yes');
@@ -209,7 +225,7 @@ class RsvpController {
     }
 
     const notesInput = document.getElementById('rsvp-notes');
-    if (notesInput) notesInput.value = guest.notes || '';
+    if (notesInput) notesInput.value = this.sanitizeInput(guest.notes || '');
   }
 
   toggleCompanionsGroup(show) {
@@ -222,7 +238,7 @@ class RsvpController {
     if (!container) return;
 
     container.innerHTML = '';
-    const existingNames = existingNamesStr ? existingNamesStr.split(',').map(n => n.trim()) : [];
+    const existingNames = existingNamesStr ? existingNamesStr.split(',').map(n => this.sanitizeInput(n.trim())) : [];
 
     for (let i = 0; i < count; i++) {
       const fieldDiv = document.createElement('div');
@@ -314,16 +330,19 @@ class RsvpController {
       return;
     }
 
-    resultsContainer.innerHTML = matches.map(g => `
-      <div class="stat-card" style="cursor: pointer; margin-bottom: 0.5rem;" onclick="window.rsvpController.selectGuestFromSearch('${g.id}')">
-        <div class="stat-icon stat-icon-purple">${g.name.charAt(0).toUpperCase()}</div>
-        <div style="flex:1;">
-          <h4 style="font-size: 1rem; margin-bottom: 0.1rem;">${g.name}</h4>
-          <span class="badge ${g.status === 'Confirmado' ? 'badge-green' : g.status === 'Recusado' ? 'badge-red' : 'badge-gold'}" style="font-size: 0.7rem;">${g.status || 'Pendente'}</span>
+    resultsContainer.innerHTML = matches.map(g => {
+      const safeName = this.sanitizeInput(g.name);
+      return `
+        <div class="stat-card" style="cursor: pointer; margin-bottom: 0.5rem;" onclick="window.rsvpController.selectGuestFromSearch('${g.id}')">
+          <div class="stat-icon stat-icon-purple">${safeName.charAt(0).toUpperCase()}</div>
+          <div style="flex:1;">
+            <h4 style="font-size: 1rem; margin-bottom: 0.1rem;">${safeName}</h4>
+            <span class="badge ${g.status === 'Confirmado' ? 'badge-green' : g.status === 'Recusado' ? 'badge-red' : 'badge-gold'}" style="font-size: 0.7rem;">${g.status || 'Pendente'}</span>
+          </div>
+          <button class="btn btn-sm btn-primary">Selecionar</button>
         </div>
-        <button class="btn btn-sm btn-primary">Selecionar</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   selectGuestFromSearch(guestId) {
@@ -353,9 +372,11 @@ class RsvpController {
     const companionsCount = isAttending ? parseInt(document.getElementById('companions-count')?.value || '0', 10) : 0;
     
     const companionInputs = document.querySelectorAll('.companion-name-input');
-    const companionNames = Array.from(companionInputs).map(inp => inp.value.trim()).filter(Boolean).join(', ');
+    const rawCompanionNames = Array.from(companionInputs).map(inp => inp.value.trim()).filter(Boolean).join(', ');
+    const companionNames = this.sanitizeInput(rawCompanionNames);
 
-    const notes = document.getElementById('rsvp-notes')?.value.trim() || '';
+    const rawNotes = document.getElementById('rsvp-notes')?.value.trim() || '';
+    const notes = this.sanitizeInput(rawNotes);
 
     const submitBtn = document.getElementById('rsvp-submit-btn');
     if (submitBtn) {
@@ -387,11 +408,11 @@ class RsvpController {
 
         if (status === 'Confirmado') {
           if (titleEl) titleEl.textContent = 'Presença Confirmada com Sucesso! 🎉';
-          if (descEl) descEl.textContent = `Que excelente notícia, ${this.currentGuest.name}! Estamos muito felizes por ter você ${companionsCount > 0 ? `e mais ${companionsCount} acompanhante(s)` : ''} conosco!`;
+          if (descEl) descEl.textContent = `Que excelente notícia, ${this.sanitizeInput(this.currentGuest.name)}! Estamos muito felizes por ter você ${companionsCount > 0 ? `e mais ${companionsCount} acompanhante(s)` : ''} conosco!`;
           window.app.triggerConfetti();
         } else {
           if (titleEl) titleEl.textContent = 'Resposta Registrada!';
-          if (descEl) descEl.textContent = `Agradecemos por nos avisar, ${this.currentGuest.name}. Sentiremos sua falta na celebração!`;
+          if (descEl) descEl.textContent = `Agradecemos por nos avisar, ${this.sanitizeInput(this.currentGuest.name)}. Sentiremos sua falta na celebração!`;
         }
       }
 
