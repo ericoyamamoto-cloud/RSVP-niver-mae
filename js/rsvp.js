@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (PREENCHIMENTO PRÉVIO & REMOÇÃO DE CAMPO DE OBSERVAÇÃO)
+   GUEST RSVP MODULE (REMOÇÃO COMPLETA DE FALLBACK DE ID NUMÉRICO)
    ========================================================================== */
 
 class RsvpController {
@@ -11,10 +11,11 @@ class RsvpController {
 
   async init() {
     const urlParams = new URLSearchParams(window.location.search);
-    const guestCode = urlParams.get('code') || urlParams.get('id');
+    const guestCode = urlParams.get('code');
 
-    if (guestCode) {
-      const singleList = await window.storageEngine.fetchGuests(guestCode);
+    // Se o convidado veio por um link individual com Código Único da Coluna M (?code=K8X92P)
+    if (guestCode && guestCode.trim()) {
+      const singleList = await window.storageEngine.fetchGuests(guestCode.trim());
       if (Array.isArray(singleList) && singleList.length > 0) {
         this.currentGuest = singleList[0];
         this.allGuests = singleList;
@@ -148,7 +149,7 @@ class RsvpController {
 
   detectGuestFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
-    const guestCode = urlParams.get('code') || urlParams.get('id');
+    const guestCode = urlParams.get('code');
     const guestName = urlParams.get('name');
 
     if (this.currentGuest) {
@@ -156,8 +157,9 @@ class RsvpController {
       return;
     }
 
-    if (guestCode) {
-      this.currentGuest = this.allGuests.find(g => (g.code && g.code.toLowerCase() === guestCode.toLowerCase()) || String(g.id) === String(guestCode));
+    if (guestCode && guestCode.trim()) {
+      // Busca ESTRITAMENTE pelo código da Coluna M (NUNCA por número de id)
+      this.currentGuest = this.allGuests.find(g => g.code && g.code.toLowerCase().trim() === guestCode.toLowerCase().trim());
     } else if (guestName) {
       this.currentGuest = this.allGuests.find(g => g.name.toLowerCase().includes(guestName.toLowerCase()));
     }
@@ -201,7 +203,6 @@ class RsvpController {
       guestStatusBadgeEl.className = `badge ${guest.status === 'Confirmado' ? 'badge-green' : guest.status === 'Recusado' ? 'badge-red' : 'badge-gold'}`;
     }
 
-    // Carrega e preenche previamente a resposta caso o convidado já tenha respondido!
     const choiceYes = document.getElementById('choice-yes-btn');
     const choiceNo = document.getElementById('choice-no-btn');
     const radioYes = document.getElementById('choice-yes');
@@ -243,8 +244,6 @@ class RsvpController {
     if (!container) return;
 
     container.innerHTML = '';
-    
-    // Limpa o prefixo "Acompanhantes: " se existir
     let cleanNamesStr = existingNamesStr.replace(/^Acompanhantes:\s*/i, '');
     const existingNames = cleanNamesStr ? cleanNamesStr.split(',').map(n => this.sanitizeInput(n.trim())) : [];
 
