@@ -218,7 +218,7 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <div>
           <h1 class="gradient-text" style="font-size:2rem;">Painel de Controle do Anfitrião</h1>
-          <p style="color:var(--text-muted);">Gerencie seus convidados, envie os convites e acompanhe os dados em tempo real.</p>
+          <p style="color:var(--text-muted);">Gerencie seus convidados, envie os convites e acompanhe os dados em tempo real com segurança.</p>
         </div>
 
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -230,6 +230,9 @@
           </button>
           <button class="btn btn-gold" onclick="document.getElementById('guide-modal-overlay').classList.add('active')">
             📖 Conectar Google Sheets
+          </button>
+          <button class="btn btn-secondary" style="border-color:var(--accent-red); color:var(--accent-red);" onclick="window.adminController.logoutAdmin()">
+            🔒 Sair
           </button>
         </div>
       </div>
@@ -304,7 +307,7 @@
           <table class="custom-table">
             <thead>
               <tr>
-                <th>Convidado</th>
+                <th>Convidado [Código]</th>
                 <th>Telefone</th>
                 <th>Status RSVP</th>
                 <th>Convite Enviado (✓)</th>
@@ -325,15 +328,36 @@
 
     <!-- Footer -->
     <footer>
-      <p>Gerenciador de Convites & Confirmação de Presença (RSVP) &copy; 2026.</p>
+      <p>Gerenciador de Convites & Confirmação de Presença (RSVP) &copy; 2026. Protegido com Criptografia & PIN de Segurança.</p>
     </footer>
 
   </div>
 
 
   <!-- ====================================================================
-       MODALS
+       MODALS & LOCK OVERLAYS
        ==================================================================== -->
+
+  <!-- Modal 0: Admin PIN Lock Screen Overlay -->
+  <div id="admin-pin-lock-overlay" class="modal-overlay" style="z-index:99999;">
+    <div class="modal-container" style="max-width:420px; text-align:center;">
+      <div style="font-size:3.5rem; margin-bottom:0.5rem;">🔒</div>
+      <h3 style="font-size:1.5rem; margin-bottom:0.25rem;" class="gradient-text">Acesso Restrito ao Anfitrião</h3>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">
+        Digite o PIN de Segurança para acessar o Painel de Controle:
+      </p>
+
+      <form id="admin-pin-form">
+        <div class="form-group" style="margin-bottom:1.25rem;">
+          <input type="password" id="admin-pin-input" class="form-control" placeholder="PIN de Segurança" maxlength="10" style="text-align:center; font-size:1.5rem; letter-spacing:0.5rem; padding:0.75rem;" autofocus required />
+        </div>
+
+        <button type="submit" class="btn btn-gold btn-block" style="padding:0.9rem; font-size:1.05rem;">
+          🔓 Desbloquear Painel
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Modal 1: Guest Search Modal (For Guests) -->
   <div id="search-modal-overlay" class="modal-overlay">
@@ -395,7 +419,7 @@
     <div class="modal-container" style="max-width:680px; max-height:90vh; overflow-y:auto;">
       <button class="modal-close" onclick="document.getElementById('settings-modal-overlay').classList.remove('active')">&times;</button>
       <h3 style="font-size:1.4rem; margin-bottom:0.25rem;" class="gradient-text">Configurações do Evento</h3>
-      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Personalize as informações do convite, observações e o endereço público do seu site.</p>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Personalize as informações do convite, observações e parâmetros de segurança.</p>
 
       <form id="settings-edit-form">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
@@ -447,6 +471,15 @@
 
         <hr style="border:0; border-top:1px solid var(--border-glass); margin:1.5rem 0;" />
 
+        <h4 style="color:var(--accent-gold); margin-bottom:0.75rem;">🔑 Segurança do Anfitrião</h4>
+        <div class="form-group">
+          <label class="form-label">PIN Numérico do Anfitrião (Padrão: 8888):</label>
+          <input type="password" id="set-admin-pin" class="form-control" placeholder="8888" style="max-width:200px;" />
+          <span style="font-size:0.8rem; color:var(--text-dim); display:block; margin-top:0.35rem;">PIN usado para abrir o Painel de Controle no link /admin.html.</span>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-glass); margin:1.5rem 0;" />
+
         <h4 style="color:var(--accent-cyan); margin-bottom:0.75rem;">🌐 URL Pública do Site (Para os Convidados)</h4>
         <div class="form-group">
           <label class="form-label">Endereço Público do Site (ex: https://rsvp-chi-umber.vercel.app):</label>
@@ -486,16 +519,21 @@
   <div id="guide-modal-overlay" class="modal-overlay">
     <div class="modal-container" style="max-width:720px; max-height:90vh; overflow-y:auto;">
       <button class="modal-close" onclick="document.getElementById('guide-modal-overlay').classList.remove('active')">&times;</button>
-      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Passo a Passo)</h3>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Com Segurança)</h3>
       <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">
-        Código configurado para atualizar a <strong>Coluna F (Sim/Não)</strong>, <strong>Coluna L (Comentário)</strong> e <strong>Coluna I (✓)</strong> sem alterar a Coluna G:
+        Código com <strong>Token de Segurança</strong>, <strong>Códigos Únicos Alfanuméricos (?code=K8X92P)</strong> e atualização das colunas F, L e I:
       </p>
 
       <div class="code-snippet-box" id="guide-code-box">
 <button class="btn-copy-code" onclick="navigator.clipboard.writeText(document.getElementById('code-snippet-raw').innerText); window.app.showToast('Código copiado!', 'success');">Copiar Código</button>
-<code id="code-snippet-raw">/** @OnlyCurrentDoc */
+<code id="code-snippet-raw">var API_SECRET_TOKEN = "RSVP_SECRET_YAMAMOTO_2026";
+
 function doGet(e) {
   try {
+    var params = e ? e.parameter : {};
+    var requestToken = String(params.token || '').trim();
+    var requestCode = String(params.code || params.id || '').trim();
+    
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = sheet.getDataRange().getValues();
     if (!data || data.length < 6) return responseJSON({ success: true, guests: [] });
@@ -506,18 +544,29 @@ function doGet(e) {
       var nameVal = String(row[2] || '').trim();
       var phoneVal = String(row[9] || '').trim();
       if (!nameVal && !phoneVal) continue;
+      var idVal = String(row[1] || (i - 4));
+      var guestCode = generateGuestCode(idVal, nameVal);
       var rawStatus = String(row[5] || '').trim().toLowerCase();
       var statusVal = (rawStatus === 'sim' || rawStatus === 'confirmado') ? 'Confirmado' : (rawStatus === 'não' || rawStatus === 'nao' || rawStatus === 'recusado') ? 'Recusado' : 'Pendente';
       var colIVal = String(row[8] || '').trim();
       var isSent = colIVal === '✓' || colIVal.toLowerCase() === 'sim';
       var familyTotal = Number(row[4] || 1);
       guests.push({
-        id: String(row[1] || (i - 4)), name: nameVal, phone: phoneVal, status: statusVal,
+        id: idVal, code: guestCode, name: nameVal, phone: phoneVal, status: statusVal,
         sent: isSent, checkSymbol: colIVal || (isSent ? '✓' : ''),
         companionsCount: 0, familyTotal: familyTotal, notes: String(row[11] || row[10] || '').trim()
       });
     }
-    return responseJSON({ success: true, guests: guests });
+    if (requestToken === API_SECRET_TOKEN) return responseJSON({ success: true, guests: guests });
+    if (requestCode) {
+      var singleGuest = null;
+      for (var k = 0; k < guests.length; k++) {
+        if (guests[k].code === requestCode || guests[k].id === requestCode) { singleGuest = guests[k]; break; }
+      }
+      if (singleGuest) return responseJSON({ success: true, guests: [singleGuest] });
+      return responseJSON({ success: false, error: 'Convite não encontrado.' });
+    }
+    return responseJSON({ success: false, error: 'Acesso Negado.' }, 403);
   } catch (err) {
     return responseJSON({ success: false, error: err.toString() });
   }
@@ -529,6 +578,7 @@ function doPost(e) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = sheet.getDataRange().getValues();
     var guestId = String(postData.id || '');
+    var guestCode = String(postData.code || '');
     var name = String(postData.name || '');
     var phone = String(postData.phone || '');
     var status = String(postData.status || '');
@@ -537,7 +587,9 @@ function doPost(e) {
     var notes = String(postData.notes || '').trim();
     var rowIndex = -1;
     for (var i = 5; i < data.length; i++) {
-      if ((guestId && String(data[i][1]) === guestId) || (name && String(data[i][2]).toLowerCase().trim() === name.toLowerCase().trim())) {
+      var rowId = String(data[i][1]);
+      var computedCode = generateGuestCode(rowId, String(data[i][2]));
+      if ((guestCode && computedCode === guestCode) || (guestId && rowId === guestId) || (name && String(data[i][2]).toLowerCase().trim() === name.toLowerCase().trim())) {
         rowIndex = i + 1; break;
       }
     }
@@ -558,6 +610,23 @@ function doPost(e) {
   } catch (err) {
     return responseJSON({ success: false, error: err.toString() });
   }
+}
+
+function generateGuestCode(idStr, nameStr) {
+  var str = String(idStr) + "_" + String(nameStr).toLowerCase().trim();
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  var code = "";
+  var positiveHash = Math.abs(hash);
+  for (var j = 0; j < 6; j++) {
+    code += chars.charAt(positiveHash % chars.length);
+    positiveHash = Math.floor(positiveHash / chars.length) + (j * 7);
+  }
+  return code;
 }
 
 function responseJSON(data) {

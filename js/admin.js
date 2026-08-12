@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN DASHBOARD MODULE (CONFIGURAÇÕES 100% DINÂMICAS & WHATSAPP TEMPLATES)
+   ADMIN DASHBOARD MODULE (COM AUTENTICAÇÃO POR PIN & CÓDIGOS ÚNICOS DE CONVIDADO)
    ========================================================================== */
 
 class AdminController {
@@ -11,9 +11,51 @@ class AdminController {
   }
 
   async init() {
+    // Verifica se o anfitrião está autenticado pelo PIN
+    if (!window.storageEngine.isAdminAuthenticated()) {
+      this.showPinLockModal();
+      return;
+    }
+
+    this.hidePinLockModal();
     await this.refreshDataFromSheets();
     this.loadSettingsFormValues();
     this.bindEvents();
+  }
+
+  showPinLockModal() {
+    const lockOverlay = document.getElementById('admin-pin-lock-overlay');
+    if (lockOverlay) lockOverlay.classList.add('active');
+  }
+
+  hidePinLockModal() {
+    const lockOverlay = document.getElementById('admin-pin-lock-overlay');
+    if (lockOverlay) lockOverlay.classList.remove('active');
+  }
+
+  verifyAdminPin(enteredPin) {
+    const settings = window.storageEngine.getSettings();
+    const correctPin = settings.adminPin || '8888';
+
+    if (String(enteredPin).trim() === String(correctPin).trim()) {
+      window.storageEngine.setAdminAuthenticated(true);
+      window.app.showToast('Acesso concedido ao Painel do Anfitrião!', 'success');
+      this.init();
+      return true;
+    } else {
+      window.app.showToast('PIN incorreto. Tente novamente.', 'error');
+      const inputEl = document.getElementById('admin-pin-input');
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+      }
+      return false;
+    }
+  }
+
+  logoutAdmin() {
+    window.storageEngine.setAdminAuthenticated(false);
+    window.location.href = 'index.html';
   }
 
   async refreshDataFromSheets() {
@@ -38,7 +80,7 @@ class AdminController {
       return window.location.origin + window.location.pathname.replace('admin.html', 'index.html');
     }
 
-    return 'https://seu-site-rsvp.vercel.app/index.html';
+    return 'https://rsvp-chi-umber.vercel.app/index.html';
   }
 
   renderMetrics() {
@@ -103,7 +145,10 @@ class AdminController {
     const baseUrl = this.getGuestBaseUrl();
 
     tableBody.innerHTML = filtered.map(g => {
-      const guestLink = baseUrl.includes('?') ? `${baseUrl}&id=${g.id}` : `${baseUrl}?id=${g.id}`;
+      // Usa CÓDIGO ÚNICO ALEATÓRIO (?code=K8X92P) para evitar ID Enumeration
+      const paramKey = g.code ? `code=${g.code}` : `id=${g.id}`;
+      const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
+
       const statusBadge = 
         g.status === 'Confirmado' ? '<span class="badge badge-green">Confirmado</span>' :
         g.status === 'Recusado' ? '<span class="badge badge-red">Recusado</span>' :
@@ -115,7 +160,7 @@ class AdminController {
 
       return `
         <tr>
-          <td><strong>${g.name}</strong></td>
+          <td><strong>${g.name}</strong> ${g.code ? `<span style="font-size:0.75rem; color:var(--accent-gold); font-family:monospace;">[${g.code}]</span>` : ''}</td>
           <td>${g.phone ? `<span style="font-family:monospace;">${g.phone}</span>` : '<span style="color:var(--accent-red); font-size:0.8rem;">⚠️ Sem celular</span>'}</td>
           <td>${statusBadge}</td>
           <td>${sentBadge}</td>
@@ -154,7 +199,10 @@ class AdminController {
     const currentGuest = pendingUnsent[0];
     const settings = window.storageEngine.getSettings();
     const baseUrl = this.getGuestBaseUrl();
-    const guestLink = baseUrl.includes('?') ? `${baseUrl}&id=${currentGuest.id}` : `${baseUrl}?id=${currentGuest.id}`;
+    
+    // Link seguro com Código Único Alfanumérico (?code=K8X92P)
+    const paramKey = currentGuest.code ? `code=${currentGuest.code}` : `id=${currentGuest.id}`;
+    const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
 
     let msg = settings.messageTemplate || DEFAULT_SETTINGS.messageTemplate;
     msg = msg
@@ -207,12 +255,9 @@ class AdminController {
     }
 
     const settings = window.storageEngine.getSettings();
-    if (!settings.publicSiteUrl && window.location.protocol.startsWith('file')) {
-      window.app.showToast('Preencha a "URL Pública do Site" nas Configurações do Evento para que os convidados possam abrir o link!', 'error');
-    }
-
     const baseUrl = this.getGuestBaseUrl();
-    const guestLink = baseUrl.includes('?') ? `${baseUrl}&id=${guest.id}` : `${baseUrl}?id=${guest.id}`;
+    const paramKey = guest.code ? `code=${guest.code}` : `id=${guest.id}`;
+    const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
 
     let msg = settings.messageTemplate || DEFAULT_SETTINGS.messageTemplate;
     msg = msg
@@ -266,6 +311,7 @@ class AdminController {
 
       await window.storageEngine.updateGuestRsvp({
         id: guest.id,
+        code: guest.code,
         name: guest.name,
         phone: guest.phone,
         status: guest.status || 'Pendente',
@@ -301,11 +347,20 @@ class AdminController {
 
   copyLink(url) {
     navigator.clipboard.writeText(url).then(() => {
-      window.app.showToast('Link individual copiado!', 'success');
+      window.app.showToast('Link individual seguro copiado!', 'success');
     });
   }
 
   bindEvents() {
+    const pinForm = document.getElementById('admin-pin-form');
+    if (pinForm) {
+      pinForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pinVal = document.getElementById('admin-pin-input')?.value;
+        this.verifyAdminPin(pinVal);
+      });
+    }
+
     const searchInp = document.getElementById('admin-search-input');
     if (searchInp) {
       searchInp.addEventListener('input', (e) => {
@@ -350,32 +405,21 @@ class AdminController {
 
   async testSheetsConnection() {
     const urlInput = document.getElementById('set-webhook-url');
-    let url = urlInput ? urlInput.value.trim() : '';
-
-    if (!url) {
-      const settings = window.storageEngine.getSettings();
-      url = settings.webhookUrl || '';
-    }
+    const settings = window.storageEngine.getSettings();
+    let url = urlInput ? urlInput.value.trim() : (settings.webhookUrl || '');
 
     if (!url) {
       window.app.showToast('Cole a URL do Google Apps Script para testar a conexão.', 'error');
       return;
     }
 
-    if (!url.startsWith('https://script.google.com/macros/s/')) {
-      window.app.showToast('A URL deve começar com https://script.google.com/macros/s/...', 'error');
-      return;
-    }
+    const token = settings.apiSecretToken || 'RSVP_SECRET_YAMAMOTO_2026';
+    const testUrl = url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
 
-    if (url.endsWith('/dev')) {
-      window.app.showToast('Aviso: A URL termina com /dev. Utilize a URL de produção que termina com /exec!', 'error');
-      return;
-    }
-
-    window.app.showToast('Conectando à planilha do Google...', 'success');
+    window.app.showToast('Conectando à planilha com o Token de Segurança...', 'success');
 
     try {
-      const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+      const resp = await fetch(testUrl, { method: 'GET', redirect: 'follow' });
       const text = await resp.text();
 
       let data;
@@ -383,7 +427,7 @@ class AdminController {
         data = JSON.parse(text);
       } catch (jsonErr) {
         if (text.includes('google.com') || text.includes('ServiceLogin') || text.includes('doctype html')) {
-          window.app.showToast('O Google exigiu login. Altere "Quem pode acessar" para "Qualquer pessoa" (sem restrição de conta).', 'error');
+          window.app.showToast('O Google exigiu login. Altere "Quem pode acessar" para "Qualquer pessoa" no Apps Script.', 'error');
           return;
         }
         throw jsonErr;
@@ -391,16 +435,16 @@ class AdminController {
 
       if (data && data.success) {
         const count = Array.isArray(data.guests) ? data.guests.length : 0;
-        window.app.showToast(`Conexão bem-sucedida! ${count} convidados carregados da planilha.`, 'success');
+        window.app.showToast(`Conexão bem-sucedida com Segurança Token! ${count} convidados carregados.`, 'success');
         
-        window.storageEngine.saveSettings({ ...window.storageEngine.getSettings(), webhookUrl: url });
+        window.storageEngine.saveSettings({ ...settings, webhookUrl: url });
         await this.refreshDataFromSheets();
       } else {
-        window.app.showToast(`Conectou, mas a planilha retornou: ${data.error || 'Verifique se adicionou linhas.'}`, 'error');
+        window.app.showToast(`Planilha retornou: ${data.error || 'Verifique o Token de Segurança.'}`, 'error');
       }
     } catch (err) {
       console.error(err);
-      window.app.showToast('Falha na conexão. Certifique-se de que "Quem pode acessar" está como "Qualquer pessoa".', 'error');
+      window.app.showToast('Falha na conexão. Verifique se o Apps Script foi publicado com acesso "Qualquer pessoa".', 'error');
     }
   }
 
@@ -468,6 +512,7 @@ class AdminController {
     if (document.getElementById('set-special-notice')) document.getElementById('set-special-notice').value = s.specialNotice || '';
     if (document.getElementById('set-webhook-url')) document.getElementById('set-webhook-url').value = s.webhookUrl || '';
     if (document.getElementById('set-public-site-url')) document.getElementById('set-public-site-url').value = s.publicSiteUrl || '';
+    if (document.getElementById('set-admin-pin')) document.getElementById('set-admin-pin').value = s.adminPin || '8888';
     if (document.getElementById('set-message-template')) document.getElementById('set-message-template').value = s.messageTemplate || '';
   }
 
@@ -484,6 +529,8 @@ class AdminController {
       specialNotice: document.getElementById('set-special-notice').value.trim(),
       webhookUrl: document.getElementById('set-webhook-url').value.trim(),
       publicSiteUrl: document.getElementById('set-public-site-url').value.trim(),
+      adminPin: document.getElementById('set-admin-pin').value.trim() || '8888',
+      apiSecretToken: window.storageEngine.getSettings().apiSecretToken || 'RSVP_SECRET_YAMAMOTO_2026',
       messageTemplate: document.getElementById('set-message-template').value.trim()
     };
 

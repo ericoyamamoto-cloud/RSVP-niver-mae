@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (100% DINÂMICO A PARTIR DAS CONFIGURAÇÕES DO EVENTO)
+   GUEST RSVP MODULE (ISOLAMENTO SEGURO DE CONVIDADO & CÓDIGOS ÚNICOS)
    ========================================================================== */
 
 class RsvpController {
@@ -10,7 +10,21 @@ class RsvpController {
   }
 
   async init() {
-    this.allGuests = await window.storageEngine.fetchGuests();
+    const urlParams = new URLSearchParams(window.location.search);
+    const guestCode = urlParams.get('code') || urlParams.get('id');
+
+    // Se o convidado veio por um link individual com Código Único (?code=K8X92P)
+    if (guestCode) {
+      const singleList = await window.storageEngine.fetchGuests(guestCode);
+      if (Array.isArray(singleList) && singleList.length > 0) {
+        this.currentGuest = singleList[0];
+        this.allGuests = singleList;
+      }
+    } else {
+      // Se acessou sem código, busca dados locais/públicos
+      this.allGuests = await window.storageEngine.fetchGuests();
+    }
+
     this.renderEventDetails();
     this.detectGuestFromUrl();
     this.bindEvents();
@@ -24,7 +38,7 @@ class RsvpController {
     const heroSubtitleEl = document.getElementById('event-hero-subtitle');
     const heroBadgeEl = document.getElementById('event-hero-badge');
 
-    if (heroTitleEl) heroTitleEl.textContent = settings.eventTitle || 'Aniversário de 88 Anos';
+    if (heroTitleEl) heroTitleEl.textContent = settings.eventTitle || 'Aniversário de 88 anos de Leiko Fukushima Yamamoto';
     if (heroSubtitleEl) heroSubtitleEl.textContent = settings.eventSubtitle || 'Venha comemorar esta data tão especial conosco!';
     if (heroBadgeEl) heroBadgeEl.textContent = settings.eventType || 'Aniversário / Festa Social';
 
@@ -44,7 +58,6 @@ class RsvpController {
         const dayOfWeekStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
         const capitalizedWeekday = dayOfWeekStr.charAt(0).toUpperCase() + dayOfWeekStr.slice(1);
         
-        // Exibe: "Sábado, 17/10/2026" (Formato DD/MM/AAAA)
         eventDateEl.textContent = `${capitalizedWeekday}, ${day}/${month}/${year}`;
       } else {
         eventDateEl.textContent = settings.eventDate;
@@ -118,11 +131,16 @@ class RsvpController {
 
   detectGuestFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
-    const guestId = urlParams.get('id') || urlParams.get('code');
+    const guestCode = urlParams.get('code') || urlParams.get('id');
     const guestName = urlParams.get('name');
 
-    if (guestId) {
-      this.currentGuest = this.allGuests.find(g => String(g.id) === String(guestId));
+    if (this.currentGuest) {
+      this.showRsvpFormForGuest(this.currentGuest);
+      return;
+    }
+
+    if (guestCode) {
+      this.currentGuest = this.allGuests.find(g => (g.code && g.code === guestCode) || String(g.id) === String(guestCode));
     } else if (guestName) {
       this.currentGuest = this.allGuests.find(g => g.name.toLowerCase().includes(guestName.toLowerCase()));
     }
@@ -310,7 +328,7 @@ class RsvpController {
   }
 
   selectGuestFromSearch(guestId) {
-    const guest = this.allGuests.find(g => String(g.id) === String(guestId));
+    const guest = this.allGuests.find(g => String(g.id) === String(guestId) || (g.code && g.code === guestId));
     if (guest) {
       this.showRsvpFormForGuest(guest);
       const modal = document.getElementById('search-modal-overlay');
@@ -349,6 +367,7 @@ class RsvpController {
     try {
       const updatedGuest = await window.storageEngine.updateGuestRsvp({
         id: this.currentGuest.id,
+        code: this.currentGuest.code,
         name: this.currentGuest.name,
         phone: this.currentGuest.phone,
         status: status,

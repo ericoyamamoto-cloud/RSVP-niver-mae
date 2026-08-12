@@ -1,11 +1,11 @@
 /* ==========================================================================
-   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (100% DINÂMICO & PERSISTENTE)
+   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (COM SEGURANÇA E CÓDIGOS ÚNICOS)
    ========================================================================== */
 
 const STORAGE_KEYS = {
   SETTINGS: 'rsvp_event_settings_v1',
   GUESTS: 'rsvp_guests_list_v1',
-  DISPATCH_INDEX: 'rsvp_dispatch_index_v1'
+  ADMIN_SESSION: 'rsvp_admin_session_v1'
 };
 
 const DEFAULT_SETTINGS = {
@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS = {
   specialNotice: 'RSVP - Confirme sua presença até o dia 30/09 por favor. Obs.: devido a limitação de vagas internas, o estacionamento dos veículos deve ser feito fora do condomínio Gramercy Park',
   webhookUrl: '',
   publicSiteUrl: 'https://rsvp-chi-umber.vercel.app',
+  adminPin: '8888', // PIN de acesso ao Painel do Anfitrião
+  apiSecretToken: 'RSVP_SECRET_YAMAMOTO_2026', // Token de Segurança do Apps Script
   messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {titulo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
 };
 
@@ -31,8 +33,9 @@ class StorageEngine {
   }
 
   init() {
-    // Atualiza com o título completo oficial da Sra. Leiko Fukushima Yamamoto
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+    if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+    }
   }
 
   getSettings() {
@@ -48,6 +51,18 @@ class StorageEngine {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }
 
+  isAdminAuthenticated() {
+    return sessionStorage.getItem(STORAGE_KEYS.ADMIN_SESSION) === 'true';
+  }
+
+  setAdminAuthenticated(auth) {
+    if (auth) {
+      sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'true');
+    } else {
+      sessionStorage.removeItem(STORAGE_KEYS.ADMIN_SESSION);
+    }
+  }
+
   getGuestsLocal() {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.GUESTS);
@@ -61,15 +76,26 @@ class StorageEngine {
     localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(guests));
   }
 
-  async fetchGuests() {
+  async fetchGuests(singleCodeOrId = null) {
     const settings = this.getSettings();
     if (settings.webhookUrl && settings.webhookUrl.trim().startsWith('http')) {
       try {
-        const response = await fetch(settings.webhookUrl.trim(), { method: 'GET', redirect: 'follow' });
+        let fetchUrl = settings.webhookUrl.trim();
+        
+        if (singleCodeOrId) {
+          fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(singleCodeOrId);
+        } else {
+          fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(settings.apiSecretToken || 'RSVP_SECRET_YAMAMOTO_2026');
+        }
+
+        const response = await fetch(fetchUrl, { method: 'GET', redirect: 'follow' });
         const text = await response.text();
         const data = JSON.parse(text);
+        
         if (data && data.success && Array.isArray(data.guests)) {
-          this.saveGuestsLocal(data.guests);
+          if (!singleCodeOrId) {
+            this.saveGuestsLocal(data.guests);
+          }
           return data.guests;
         }
       } catch (err) {
@@ -82,12 +108,13 @@ class StorageEngine {
   async updateGuestRsvp(guestData) {
     const settings = this.getSettings();
     const guests = this.getGuestsLocal();
-    const index = guests.findIndex(g => String(g.id) === String(guestData.id) || g.name.toLowerCase() === guestData.name.toLowerCase());
+    const index = guests.findIndex(g => String(g.id) === String(guestData.id) || (g.code && g.code === guestData.code) || g.name.toLowerCase() === guestData.name.toLowerCase());
     
     const isSent = guestData.sent !== undefined ? guestData.sent : (index !== -1 ? guests[index].sent : false);
     
     const updatedRecord = {
       id: guestData.id || (index !== -1 ? guests[index].id : String(Date.now())),
+      code: guestData.code || (index !== -1 ? guests[index].code : ''),
       name: guestData.name,
       phone: guestData.phone || (index !== -1 ? guests[index].phone : ''),
       status: guestData.status || (index !== -1 ? guests[index].status : 'Pendente'),
@@ -96,7 +123,8 @@ class StorageEngine {
       companionsCount: Number(guestData.companionsCount !== undefined ? guestData.companionsCount : (index !== -1 ? guests[index].companionsCount : 0)),
       companionNames: guestData.companionNames !== undefined ? guestData.companionNames : (index !== -1 ? guests[index].companionNames : ''),
       notes: guestData.notes !== undefined ? guestData.notes : (index !== -1 ? guests[index].notes : ''),
-      updatedAt: guestData.updatedAt || new Date().toLocaleString('pt-BR')
+      updatedAt: guestData.updatedAt || new Date().toLocaleString('pt-BR'),
+      token: settings.apiSecretToken || 'RSVP_SECRET_YAMAMOTO_2026'
     };
 
     if (index !== -1) {
