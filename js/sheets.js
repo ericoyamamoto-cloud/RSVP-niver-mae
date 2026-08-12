@@ -10,7 +10,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
   eventType: 'Aniversário / Festa Social',
-  eventTitle: 'Aniversário de 88 Anos',
+  eventTitle: 'Aniversário de 88 anos de Leiko Fukushima Yamamoto',
   eventSubtitle: 'Venha comemorar esta data tão especial conosco!',
   eventDate: '2026-10-17',
   eventTime: '18:30',
@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
   specialNotice: 'RSVP - Confirme sua presença até o dia 30/09 por favor. Obs.: devido a limitação de vagas internas, o estacionamento dos veículos deve ser feito fora do condomínio Gramercy Park',
   webhookUrl: '',
   publicSiteUrl: 'https://rsvp-chi-umber.vercel.app',
-  messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {tipo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
+  messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {titulo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
 };
 
 const INITIAL_DEMO_GUESTS = [];
@@ -31,10 +31,8 @@ class StorageEngine {
   }
 
   init() {
-    // SÓ define DEFAULT_SETTINGS se NENHUMA configuração existir ainda no localStorage
-    if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-    }
+    // Atualiza com o título completo oficial da Sra. Leiko Fukushima Yamamoto
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
   }
 
   getSettings() {
