@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (COM SEGURANÇA E CÓDIGOS ÚNICOS)
+   GOOGLE SHEETS & LOCAL STORAGE DATA ENGINE (COM SUPORTE A COLUNAS D & E)
    ========================================================================== */
 
 const STORAGE_KEYS = {
@@ -20,8 +20,8 @@ const DEFAULT_SETTINGS = {
   specialNotice: 'RSVP - Confirme sua presença até o dia 30/09 por favor. Obs.: devido a limitação de vagas internas, o estacionamento dos veículos deve ser feito fora do condomínio Gramercy Park',
   webhookUrl: '',
   publicSiteUrl: 'https://rsvp-chi-umber.vercel.app',
-  adminPin: '8888', // PIN de acesso ao Painel do Anfitrião
-  apiSecretToken: 'RSVP_SECRET_YAMAMOTO_2026', // Token de Segurança do Apps Script
+  adminPin: '8888',
+  apiSecretToken: 'RSVP_SECRET_YAMAMOTO_2026',
   messageTemplate: 'Oi {nome}! 🎉 Você está convidado(a) para celebrar conosco o {titulo_evento}! Dá uma olhada em todos os detalhes e confirma sua presença pelo link: {link}'
 };
 
@@ -111,7 +111,10 @@ class StorageEngine {
     const index = guests.findIndex(g => String(g.id) === String(guestData.id) || (g.code && g.code === guestData.code) || g.name.toLowerCase() === guestData.name.toLowerCase());
     
     const isSent = guestData.sent !== undefined ? guestData.sent : (index !== -1 ? guests[index].sent : false);
-    
+    const companionsCount = Number(guestData.companionsCount !== undefined ? guestData.companionsCount : (index !== -1 ? guests[index].companionsCount : 0));
+    const isConfirmed = (guestData.status || (index !== -1 ? guests[index].status : 'Pendente')) === 'Confirmado';
+    const familyTotal = isConfirmed ? (1 + companionsCount) : 0;
+
     const updatedRecord = {
       id: guestData.id || (index !== -1 ? guests[index].id : String(Date.now())),
       code: guestData.code || (index !== -1 ? guests[index].code : ''),
@@ -120,7 +123,8 @@ class StorageEngine {
       status: guestData.status || (index !== -1 ? guests[index].status : 'Pendente'),
       sent: isSent,
       checkSymbol: isSent ? '✓' : '',
-      companionsCount: Number(guestData.companionsCount !== undefined ? guestData.companionsCount : (index !== -1 ? guests[index].companionsCount : 0)),
+      companionsCount: companionsCount,
+      familyTotal: familyTotal,
       companionNames: guestData.companionNames !== undefined ? guestData.companionNames : (index !== -1 ? guests[index].companionNames : ''),
       notes: guestData.notes !== undefined ? guestData.notes : (index !== -1 ? guests[index].notes : ''),
       updatedAt: guestData.updatedAt || new Date().toLocaleString('pt-BR'),

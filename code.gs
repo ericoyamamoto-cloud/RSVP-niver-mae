@@ -1,14 +1,14 @@
 /**
  * @OnlyCurrentDoc
  * ============================================================================
- * GOOGLE APPS SCRIPT - GERENCIADOR DE CONVITES RSVP (COM COLUNA M: CÓDIGO ÚNICO)
+ * GOOGLE APPS SCRIPT - GERENCIADOR DE CONVITES RSVP (ATUALIZAÇÃO COLUNAS D & E)
  * PLANILHA: "LISTA DE CONVIDADOS - ANIVERSÁRIO MÃE 88 ANOS"
  * ============================================================================
  * ESTRUTURA DAS COLUNAS (LINHA 6 EM DIANTE):
  * Col B (2) : ID / Nº
  * Col C (3) : Nome do Convidado
- * Col D (4) : Qtd. Dependentes
- * Col E (5) : Total na Família
+ * Col D (4) : Qtd. Dependentes -> ATUALIZADO PELO APP (Acompanhantes)
+ * Col E (5) : Total na Família -> ATUALIZADO PELO APP (1 + Qtd. Dependentes)
  * Col F (6) : Confirmado? (Sim/Não)
  * Col G (7) : Pessoas Confirmad (NÃO MEXER - Manual do Anfitrião)
  * Col H (8) : Acumulado de Pessoas
@@ -16,11 +16,45 @@
  * Col J (10): Telefone / Contato
  * Col K (11): Observações
  * Col L (12): Comentário do Convidado
- * Col M (13): CÓDIGO ÚNICO DO CONVITE (ex: K8X92P) -> GRAVADO DEFINITIVAMENTE
+ * Col M (13): CÓDIGO ÚNICO DO CONVITE (ex: K8X92P)
  * ============================================================================
  */
 
 var API_SECRET_TOKEN = "RSVP_SECRET_YAMAMOTO_2026";
+
+/**
+ * Função utilitária para gerar todos os códigos únicos na Coluna M em 1 clique
+ */
+function gerarCodigosColunaM() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var count = 0;
+  
+  if (data.length >= 5) {
+    sheet.getRange(5, 13).setValue("Código Único Convite");
+  }
+
+  for (var i = 5; i < data.length; i++) {
+    var row = data[i];
+    if (!row || row.length < 3) continue;
+    
+    var nameVal = String(row[2] || '').trim();
+    var phoneVal = String(row[9] || '').trim();
+    if (!nameVal && !phoneVal) continue;
+    
+    var idVal = String(row[1] || (i - 4));
+    var currentCode = String(row[12] || '').trim();
+    
+    if (!currentCode || currentCode.length < 4) {
+      var newCode = generateGuestCode(idVal, nameVal);
+      sheet.getRange(i + 1, 13).setValue(newCode);
+      count++;
+    }
+  }
+  
+  SpreadsheetApp.flush();
+  Logger.log("Concluído: " + count + " códigos únicos gravados na Coluna M!");
+}
 
 function doGet(e) {
   try {
@@ -38,7 +72,6 @@ function doGet(e) {
     var guests = [];
     var needsUpdateSheet = false;
     
-    // Leitura a partir da Linha 6 (índice 5 no array JS)
     for (var i = 5; i < data.length; i++) {
       var row = data[i];
       if (!row || row.length < 3) continue;
@@ -54,7 +87,7 @@ function doGet(e) {
       var guestCode = String(row[12] || '').trim();
       if (!guestCode || guestCode.length < 4) {
         guestCode = generateGuestCode(idVal, nameVal);
-        sheet.getRange(i + 1, 13).setValue(guestCode); // Grava na Coluna M
+        sheet.getRange(i + 1, 13).setValue(guestCode);
         needsUpdateSheet = true;
       }
       
@@ -69,7 +102,8 @@ function doGet(e) {
       var colIVal = String(row[8] || '').trim(); // Coluna I (✓)
       var isSent = colIVal === '✓' || colIVal.toLowerCase() === 'sim' || colIVal.toLowerCase() === 'true';
       
-      var familyTotal = Number(row[4] || 1);    // Coluna E
+      var companionsCount = Number(row[3] || 0);  // Coluna D (Qtd. Dependentes)
+      var familyTotal = Number(row[4] || 1);      // Coluna E (Total na Família)
       var guestComment = String(row[11] || row[10] || '').trim(); // Coluna L / K
       
       guests.push({
@@ -80,7 +114,7 @@ function doGet(e) {
         status: statusVal,
         sent: isSent,
         checkSymbol: colIVal || (isSent ? '✓' : ''),
-        companionsCount: 0,
+        companionsCount: companionsCount,
         familyTotal: familyTotal,
         notes: guestComment,
         updatedAt: ''
@@ -100,7 +134,7 @@ function doGet(e) {
       });
     }
     
-    // 2. REQUISIÇÃO DE CONVIDADO PÚBLICO (?code=K8X92P) -> Busca ESTRITAMENTE pela Coluna M (guestCode)
+    // 2. REQUISIÇÃO DE CONVIDADO PÚBLICO (?code=K8X92P) -> Busca ESTRITAMENTE pela Coluna M
     if (requestCode) {
       var singleGuest = null;
       var reqClean = requestCode.toLowerCase().trim();
@@ -112,7 +146,6 @@ function doGet(e) {
         }
       }
 
-      // Fallback secundário por nome exato apenas se code não bater
       if (!singleGuest) {
         for (var m = 0; m < guests.length; m++) {
           if (guests[m].name.toLowerCase().trim() === reqClean) {
@@ -125,7 +158,7 @@ function doGet(e) {
       if (singleGuest) {
         return responseJSON({
           success: true,
-          guests: [singleGuest] // Retorna estritamente 1 único convidado
+          guests: [singleGuest]
         });
       } else {
         return responseJSON({ success: false, error: 'Convite não encontrado.' });
@@ -155,12 +188,12 @@ function doPost(e) {
     var phone = String(postData.phone || '');
     var status = String(postData.status || '');
     var sent = postData.sent;
+    var companionsCount = Number(postData.companionsCount || 0);
     var companionNames = String(postData.companionNames || '').trim();
     var notes = String(postData.notes || '').trim();
     
     var rowIndex = -1;
     
-    // Busca a linha a partir da Linha 6 (índice 5)
     for (var i = 5; i < data.length; i++) {
       var rowId = String(data[i][1]);                        // Coluna B
       var rowName = String(data[i][2]).toLowerCase().trim(); // Coluna C
@@ -175,15 +208,24 @@ function doPost(e) {
     }
     
     if (rowIndex !== -1) {
-      if (name) sheet.getRange(rowIndex, 3).setValue(name);
-      if (phone) sheet.getRange(rowIndex, 10).setValue(phone);
+      if (name) sheet.getRange(rowIndex, 3).setValue(name); // Coluna C
+      if (phone) sheet.getRange(rowIndex, 10).setValue(phone); // Coluna J
       
       if (status) {
         var sLower = String(status).toLowerCase().trim();
         if (sLower === 'confirmado' || sLower === 'sim') {
-          sheet.getRange(rowIndex, 6).setValue('Sim');
+          sheet.getRange(rowIndex, 6).setValue('Sim'); // Coluna F
+          
+          // ATUALIZA COLUNAS D e E CONFORME SOLICITADO
+          var totalFamily = 1 + companionsCount;
+          sheet.getRange(rowIndex, 4).setValue(companionsCount); // Coluna D (Qtd. Dependentes)
+          sheet.getRange(rowIndex, 5).setValue(totalFamily);     // Coluna E (Total na Família)
+          
         } else if (sLower === 'recusado' || sLower === 'não' || sLower === 'nao') {
-          sheet.getRange(rowIndex, 6).setValue('Não');
+          sheet.getRange(rowIndex, 6).setValue('Não'); // Coluna F
+          
+          sheet.getRange(rowIndex, 4).setValue(0); // Coluna D (0 Dependentes)
+          sheet.getRange(rowIndex, 5).setValue(0); // Coluna E (0 Total na Família)
         }
       }
       
@@ -192,11 +234,11 @@ function doPost(e) {
         finalComment = (finalComment ? finalComment + ' | Acompanhantes: ' : 'Acompanhantes: ') + companionNames;
       }
       if (finalComment) {
-        sheet.getRange(rowIndex, 12).setValue(finalComment);
+        sheet.getRange(rowIndex, 12).setValue(finalComment); // Coluna L
       }
       
       if (sent === true) {
-        sheet.getRange(rowIndex, 9).setValue('✓');
+        sheet.getRange(rowIndex, 9).setValue('✓'); // Coluna I
       } else if (sent === false) {
         sheet.getRange(rowIndex, 9).setValue('');
       }
@@ -210,9 +252,6 @@ function doPost(e) {
   }
 }
 
-/**
- * Gerador de Código Único Alfanumérico (ex: K8X92P)
- */
 function generateGuestCode(idStr, nameStr) {
   var str = String(idStr) + "_" + String(nameStr).toLowerCase().trim();
   var hash = 0;

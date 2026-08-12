@@ -519,25 +519,48 @@
   <div id="guide-modal-overlay" class="modal-overlay">
     <div class="modal-container" style="max-width:720px; max-height:90vh; overflow-y:auto;">
       <button class="modal-close" onclick="document.getElementById('guide-modal-overlay').classList.remove('active')">&times;</button>
-      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Com Segurança)</h3>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Atualizando Colunas D, E, F, I, L e M)</h3>
       <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">
-        Código com <strong>Token de Segurança</strong>, <strong>Códigos Únicos Alfanuméricos (?code=K8X92P)</strong> e atualização das colunas F, L e I:
+        Código configurado para atualizar a <strong>Coluna D (Qtd. Dependentes)</strong>, <strong>Coluna E (Total na Família = 1 + Dependentes)</strong>, <strong>Coluna F (Sim/Não)</strong>, <strong>Coluna I (✓)</strong>, <strong>Coluna L (Comentários)</strong> e <strong>Coluna M (Código Único Fixo)</strong> sem alterar a Coluna G:
       </p>
 
       <div class="code-snippet-box" id="guide-code-box">
 <button class="btn-copy-code" onclick="navigator.clipboard.writeText(document.getElementById('code-snippet-raw').innerText); window.app.showToast('Código copiado!', 'success');">Copiar Código</button>
 <code id="code-snippet-raw">var API_SECRET_TOKEN = "RSVP_SECRET_YAMAMOTO_2026";
 
+function gerarCodigosColunaM() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var count = 0;
+  if (data.length >= 5) sheet.getRange(5, 13).setValue("Código Único Convite");
+  for (var i = 5; i < data.length; i++) {
+    var row = data[i];
+    if (!row || row.length < 3) continue;
+    var nameVal = String(row[2] || '').trim();
+    var phoneVal = String(row[9] || '').trim();
+    if (!nameVal && !phoneVal) continue;
+    var idVal = String(row[1] || (i - 4));
+    var currentCode = String(row[12] || '').trim();
+    if (!currentCode || currentCode.length < 4) {
+      var newCode = generateGuestCode(idVal, nameVal);
+      sheet.getRange(i + 1, 13).setValue(newCode);
+      count++;
+    }
+  }
+  SpreadsheetApp.flush();
+  Logger.log("Concluído: " + count + " códigos únicos gravados na Coluna M!");
+}
+
 function doGet(e) {
   try {
     var params = e ? e.parameter : {};
     var requestToken = String(params.token || '').trim();
     var requestCode = String(params.code || params.id || '').trim();
-    
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = sheet.getDataRange().getValues();
     if (!data || data.length < 6) return responseJSON({ success: true, guests: [] });
     var guests = [];
+    var needsUpdateSheet = false;
     for (var i = 5; i < data.length; i++) {
       var row = data[i];
       if (!row || row.length < 3) continue;
@@ -545,23 +568,36 @@ function doGet(e) {
       var phoneVal = String(row[9] || '').trim();
       if (!nameVal && !phoneVal) continue;
       var idVal = String(row[1] || (i - 4));
-      var guestCode = generateGuestCode(idVal, nameVal);
+      var guestCode = String(row[12] || '').trim();
+      if (!guestCode || guestCode.length < 4) {
+        guestCode = generateGuestCode(idVal, nameVal);
+        sheet.getRange(i + 1, 13).setValue(guestCode);
+        needsUpdateSheet = true;
+      }
       var rawStatus = String(row[5] || '').trim().toLowerCase();
       var statusVal = (rawStatus === 'sim' || rawStatus === 'confirmado') ? 'Confirmado' : (rawStatus === 'não' || rawStatus === 'nao' || rawStatus === 'recusado') ? 'Recusado' : 'Pendente';
       var colIVal = String(row[8] || '').trim();
       var isSent = colIVal === '✓' || colIVal.toLowerCase() === 'sim';
+      var companionsCount = Number(row[3] || 0);
       var familyTotal = Number(row[4] || 1);
       guests.push({
         id: idVal, code: guestCode, name: nameVal, phone: phoneVal, status: statusVal,
         sent: isSent, checkSymbol: colIVal || (isSent ? '✓' : ''),
-        companionsCount: 0, familyTotal: familyTotal, notes: String(row[11] || row[10] || '').trim()
+        companionsCount: companionsCount, familyTotal: familyTotal, notes: String(row[11] || row[10] || '').trim()
       });
     }
+    if (needsUpdateSheet) SpreadsheetApp.flush();
     if (requestToken === API_SECRET_TOKEN) return responseJSON({ success: true, guests: guests });
     if (requestCode) {
       var singleGuest = null;
+      var reqClean = requestCode.toLowerCase().trim();
       for (var k = 0; k < guests.length; k++) {
-        if (guests[k].code === requestCode || guests[k].id === requestCode) { singleGuest = guests[k]; break; }
+        if (guests[k].code.toLowerCase().trim() === reqClean) { singleGuest = guests[k]; break; }
+      }
+      if (!singleGuest) {
+        for (var m = 0; m < guests.length; m++) {
+          if (guests[m].name.toLowerCase().trim() === reqClean) { singleGuest = guests[m]; break; }
+        }
       }
       if (singleGuest) return responseJSON({ success: true, guests: [singleGuest] });
       return responseJSON({ success: false, error: 'Convite não encontrado.' });
@@ -583,13 +619,14 @@ function doPost(e) {
     var phone = String(postData.phone || '');
     var status = String(postData.status || '');
     var sent = postData.sent;
+    var companionsCount = Number(postData.companionsCount || 0);
     var companionNames = String(postData.companionNames || '').trim();
     var notes = String(postData.notes || '').trim();
     var rowIndex = -1;
     for (var i = 5; i < data.length; i++) {
       var rowId = String(data[i][1]);
-      var computedCode = generateGuestCode(rowId, String(data[i][2]));
-      if ((guestCode && computedCode === guestCode) || (guestId && rowId === guestId) || (name && String(data[i][2]).toLowerCase().trim() === name.toLowerCase().trim())) {
+      var rowCode = String(data[i][12] || '').trim();
+      if ((guestCode && rowCode && rowCode.toLowerCase() === guestCode.toLowerCase()) || (guestId && rowId === guestId) || (name && String(data[i][2]).toLowerCase().trim() === name.toLowerCase().trim())) {
         rowIndex = i + 1; break;
       }
     }
@@ -598,8 +635,16 @@ function doPost(e) {
       if (phone) sheet.getRange(rowIndex, 10).setValue(phone);
       if (status) {
         var sLower = String(status).toLowerCase().trim();
-        if (sLower === 'confirmado' || sLower === 'sim') sheet.getRange(rowIndex, 6).setValue('Sim');
-        else if (sLower === 'recusado' || sLower === 'não' || sLower === 'nao') sheet.getRange(rowIndex, 6).setValue('Não');
+        if (sLower === 'confirmado' || sLower === 'sim') {
+          sheet.getRange(rowIndex, 6).setValue('Sim');
+          var totalFamily = 1 + companionsCount;
+          sheet.getRange(rowIndex, 4).setValue(companionsCount);
+          sheet.getRange(rowIndex, 5).setValue(totalFamily);
+        } else if (sLower === 'recusado' || sLower === 'não' || sLower === 'nao') {
+          sheet.getRange(rowIndex, 6).setValue('Não');
+          sheet.getRange(rowIndex, 4).setValue(0);
+          sheet.getRange(rowIndex, 5).setValue(0);
+        }
       }
       var finalComment = notes;
       if (companionNames) finalComment = (finalComment ? finalComment + ' | Acompanhantes: ' : 'Acompanhantes: ') + companionNames;
