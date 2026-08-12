@@ -1,14 +1,22 @@
 /**
  * @OnlyCurrentDoc
  * ============================================================================
- * GOOGLE APPS SCRIPT - GERENCIADOR DE CONVITES RSVP (COM CAMADA DE SEGURANÇA)
+ * GOOGLE APPS SCRIPT - GERENCIADOR DE CONVITES RSVP (COM COLUNA M: CÓDIGO ÚNICO)
  * PLANILHA: "LISTA DE CONVIDADOS - ANIVERSÁRIO MÃE 88 ANOS"
  * ============================================================================
- * REGRAS DE SEGURANÇA & PRIVACIDADE:
- * 1. API_SECRET_TOKEN: Exigido para listagem completa de dados no Painel do Anfitrião.
- * 2. CÓDIGOS ÚNICOS (?code=K8X92P): Cada convidado possui um código único alfanumérico.
- * 3. ISOLAMENTO DE DADOS PÚBLICOS: Requisições de convidados retornam APENAS o seu próprio registro.
- * 4. REQUISIÇÕES NÃO AUTORIZADAS: Retornam erro 403 (Acesso Negado).
+ * ESTRUTURA DAS COLUNAS (LINHA 6 EM DIANTE):
+ * Col B (2) : ID / Nº
+ * Col C (3) : Nome do Convidado
+ * Col D (4) : Qtd. Dependentes
+ * Col E (5) : Total na Família
+ * Col F (6) : Confirmado? (Sim/Não)
+ * Col G (7) : Pessoas Confirmad (NÃO MEXER - Manual do Anfitrião)
+ * Col H (8) : Acumulado de Pessoas
+ * Col I (9) : Convite Enviado? (✓)
+ * Col J (10): Telefone / Contato
+ * Col K (11): Observações
+ * Col L (12): Comentário do Convidado
+ * Col M (13): CÓDIGO ÚNICO DO CONVITE (ex: K8X92P) -> GRAVADO DEFINITIVAMENTE
  * ============================================================================
  */
 
@@ -28,6 +36,7 @@ function doGet(e) {
     }
 
     var guests = [];
+    var needsUpdateSheet = false;
     
     // Leitura a partir da Linha 6 (índice 5 no array JS)
     for (var i = 5; i < data.length; i++) {
@@ -40,9 +49,16 @@ function doGet(e) {
       if (!nameVal && !phoneVal) continue;
       
       var idVal = String(row[1] || (i - 4));     // Coluna B (Nº)
-      var guestCode = generateGuestCode(idVal, nameVal); // Código único alfanumérico (ex: K8X92P)
       
-      var rawStatus = String(row[5] || '').trim().toLowerCase(); // Coluna F (Confirmado? Sim/Não)
+      // Coluna M (13): Código Único de Convite Fixo
+      var guestCode = String(row[12] || '').trim();
+      if (!guestCode || guestCode.length < 4) {
+        guestCode = generateGuestCode(idVal, nameVal);
+        sheet.getRange(i + 1, 13).setValue(guestCode); // Grava na Coluna M
+        needsUpdateSheet = true;
+      }
+      
+      var rawStatus = String(row[5] || '').trim().toLowerCase(); // Coluna F (Sim/Não)
       var statusVal = 'Pendente';
       if (rawStatus === 'sim' || rawStatus === 'confirmado') {
         statusVal = 'Confirmado';
@@ -50,11 +66,11 @@ function doGet(e) {
         statusVal = 'Recusado';
       }
       
-      var colIVal = String(row[8] || '').trim(); // Coluna I (Convite Enviado?)
+      var colIVal = String(row[8] || '').trim(); // Coluna I (✓)
       var isSent = colIVal === '✓' || colIVal.toLowerCase() === 'sim' || colIVal.toLowerCase() === 'true';
       
-      var familyTotal = Number(row[4] || 1);    // Coluna E (Total na Família)
-      var guestComment = String(row[11] || row[10] || '').trim(); // Coluna L (Comentário) ou K (Obs)
+      var familyTotal = Number(row[4] || 1);    // Coluna E
+      var guestComment = String(row[11] || row[10] || '').trim(); // Coluna L / K
       
       guests.push({
         id: idVal,
@@ -70,8 +86,12 @@ function doGet(e) {
         updatedAt: ''
       });
     }
+
+    if (needsUpdateSheet) {
+      SpreadsheetApp.flush();
+    }
     
-    // 1. ANFITRIÃO COM TOKEN DE SEGURANÇA -> Retorna a lista completa de convidados
+    // 1. REQUISIÇÃO DO ANFITRIÃO COM TOKEN -> Retorna todos os convidados
     if (requestToken === API_SECRET_TOKEN) {
       return responseJSON({ 
         success: true, 
@@ -80,13 +100,25 @@ function doGet(e) {
       });
     }
     
-    // 2. CONVIDADO PÚBLICO COM CÓDIGO ÚNICO (?code=K8X92P) -> Retorna APENAS o convite daquele convidado
+    // 2. REQUISIÇÃO DE CONVIDADO PÚBLICO (?code=K8X92P) -> Busca ESTRITAMENTE pela Coluna M (guestCode)
     if (requestCode) {
       var singleGuest = null;
+      var reqClean = requestCode.toLowerCase().trim();
+      
       for (var k = 0; k < guests.length; k++) {
-        if (guests[k].code === requestCode || guests[k].id === requestCode || guests[k].name.toLowerCase() === requestCode.toLowerCase()) {
+        if (guests[k].code.toLowerCase().trim() === reqClean) {
           singleGuest = guests[k];
           break;
+        }
+      }
+
+      // Fallback secundário por nome exato apenas se code não bater
+      if (!singleGuest) {
+        for (var m = 0; m < guests.length; m++) {
+          if (guests[m].name.toLowerCase().trim() === reqClean) {
+            singleGuest = guests[m];
+            break;
+          }
         }
       }
       
@@ -100,7 +132,7 @@ function doGet(e) {
       }
     }
     
-    // 3. SEM TOKEN E SEM CÓDIGO -> Rejeita o acesso por segurança
+    // 3. SEM TOKEN E SEM CÓDIGO -> Rejeita o acesso
     return responseJSON({ 
       success: false, 
       error: 'Acesso Negado: Token de Segurança Inválido.' 
@@ -128,18 +160,15 @@ function doPost(e) {
     
     var rowIndex = -1;
     
-    // Localiza a linha do convidado a partir da Linha 6 (índice 5)
+    // Busca a linha a partir da Linha 6 (índice 5)
     for (var i = 5; i < data.length; i++) {
       var rowId = String(data[i][1]);                        // Coluna B
       var rowName = String(data[i][2]).toLowerCase().trim(); // Coluna C
-      var rowPhone = String(data[i][9]).replace(/\D/g, ''); // Coluna J
-      var cleanPhone = phone.replace(/\D/g, '');
-      var computedCode = generateGuestCode(rowId, String(data[i][2]));
+      var rowCode = String(data[i][12] || '').trim();        // Coluna M
       
-      if ((guestCode && computedCode === guestCode) ||
+      if ((guestCode && rowCode && rowCode.toLowerCase() === guestCode.toLowerCase()) ||
           (guestId && rowId === guestId) || 
-          (name && rowName === name.toLowerCase().trim()) || 
-          (cleanPhone && rowPhone && rowPhone === cleanPhone)) {
+          (name && rowName === name.toLowerCase().trim())) {
         rowIndex = i + 1; // 1-indexed no Sheets
         break;
       }
@@ -182,7 +211,7 @@ function doPost(e) {
 }
 
 /**
- * Gerador de Código Único Alfanumérico (ex: K8X92P) para cada convidado
+ * Gerador de Código Único Alfanumérico (ex: K8X92P)
  */
 function generateGuestCode(idStr, nameStr) {
   var str = String(idStr) + "_" + String(nameStr).toLowerCase().trim();
@@ -202,8 +231,6 @@ function generateGuestCode(idStr, nameStr) {
   return code;
 }
 
-function responseJSON(data, statusCode) {
-  var output = ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-  return output;
+function responseJSON(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }

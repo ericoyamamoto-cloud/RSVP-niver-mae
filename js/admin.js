@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN DASHBOARD MODULE (COM AUTENTICAÇÃO POR PIN & CÓDIGOS ÚNICOS DE CONVIDADO)
+   ADMIN DASHBOARD MODULE (COM AUTENTICAÇÃO POR PIN & CÓDIGOS ÚNICOS DA COLUNA M)
    ========================================================================== */
 
 class AdminController {
@@ -11,10 +11,8 @@ class AdminController {
   }
 
   async init() {
-    // Sempre vincula os eventos do formulário de PIN PRIMEIRO para evitar submit normal do HTML
     this.bindPinEvents();
 
-    // Verifica se o anfitrião está autenticado pelo PIN
     if (!window.storageEngine.isAdminAuthenticated()) {
       this.showPinLockModal();
       return;
@@ -62,7 +60,6 @@ class AdminController {
       window.app.showToast('Acesso concedido ao Painel do Anfitrião!', 'success');
       this.hidePinLockModal();
       
-      // Garante a exibição da view do admin
       if (window.app) window.app.switchView('admin');
       
       this.init();
@@ -143,6 +140,7 @@ class AdminController {
       const matchSearch = !q ? true : (
         g.name.toLowerCase().includes(q) || 
         (g.phone && g.phone.includes(q)) || 
+        (g.code && g.code.toLowerCase().includes(q)) ||
         (g.companionNames && g.companionNames.toLowerCase().includes(q))
       );
 
@@ -170,8 +168,8 @@ class AdminController {
     const baseUrl = this.getGuestBaseUrl();
 
     tableBody.innerHTML = filtered.map(g => {
-      const paramKey = g.code ? `code=${g.code}` : `id=${g.id}`;
-      const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
+      // Usa CÓDIGO ÚNICO DA COLUNA M (?code=K8X92P) para precisão absoluta
+      const guestLink = baseUrl.includes('?') ? `${baseUrl}&code=${g.code}` : `${baseUrl}?code=${g.code}`;
 
       const statusBadge = 
         g.status === 'Confirmado' ? '<span class="badge badge-green">Confirmado</span>' :
@@ -184,7 +182,7 @@ class AdminController {
 
       return `
         <tr>
-          <td><strong>${g.name}</strong> ${g.code ? `<span style="font-size:0.75rem; color:var(--accent-gold); font-family:monospace;">[${g.code}]</span>` : ''}</td>
+          <td><strong>${g.name}</strong> <span style="font-size:0.75rem; color:var(--accent-gold); font-family:monospace;">[${g.code || '...'}]</span></td>
           <td>${g.phone ? `<span style="font-family:monospace;">${g.phone}</span>` : '<span style="color:var(--accent-red); font-size:0.8rem;">⚠️ Sem celular</span>'}</td>
           <td>${statusBadge}</td>
           <td>${sentBadge}</td>
@@ -224,8 +222,8 @@ class AdminController {
     const settings = window.storageEngine.getSettings();
     const baseUrl = this.getGuestBaseUrl();
     
-    const paramKey = currentGuest.code ? `code=${currentGuest.code}` : `id=${currentGuest.id}`;
-    const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
+    // Link seguro com Código Único da Coluna M (?code=K8X92P)
+    const guestLink = baseUrl.includes('?') ? `${baseUrl}&code=${currentGuest.code}` : `${baseUrl}?code=${currentGuest.code}`;
 
     let msg = settings.messageTemplate || DEFAULT_SETTINGS.messageTemplate;
     msg = msg
@@ -279,8 +277,7 @@ class AdminController {
 
     const settings = window.storageEngine.getSettings();
     const baseUrl = this.getGuestBaseUrl();
-    const paramKey = guest.code ? `code=${guest.code}` : `id=${guest.id}`;
-    const guestLink = baseUrl.includes('?') ? `${baseUrl}&${paramKey}` : `${baseUrl}?${paramKey}`;
+    const guestLink = baseUrl.includes('?') ? `${baseUrl}&code=${guest.code}` : `${baseUrl}?code=${guest.code}`;
 
     let msg = settings.messageTemplate || DEFAULT_SETTINGS.messageTemplate;
     msg = msg

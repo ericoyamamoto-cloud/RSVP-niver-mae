@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (ISOLAMENTO SEGURO DE CONVIDADO & CÓDIGOS ÚNICOS)
+   GUEST RSVP MODULE (ISOLAMENTO SEGURO DE CONVIDADO VIA COLUNA M)
    ========================================================================== */
 
 class RsvpController {
@@ -13,7 +13,7 @@ class RsvpController {
     const urlParams = new URLSearchParams(window.location.search);
     const guestCode = urlParams.get('code') || urlParams.get('id');
 
-    // Se o convidado veio por um link individual com Código Único (?code=K8X92P)
+    // Se o convidado veio por um link individual com Código Único da Coluna M (?code=K8X92P)
     if (guestCode) {
       const singleList = await window.storageEngine.fetchGuests(guestCode);
       if (Array.isArray(singleList) && singleList.length > 0) {
@@ -21,7 +21,6 @@ class RsvpController {
         this.allGuests = singleList;
       }
     } else {
-      // Se acessou sem código, busca dados locais/públicos
       this.allGuests = await window.storageEngine.fetchGuests();
     }
 
@@ -140,7 +139,7 @@ class RsvpController {
     }
 
     if (guestCode) {
-      this.currentGuest = this.allGuests.find(g => (g.code && g.code === guestCode) || String(g.id) === String(guestCode));
+      this.currentGuest = this.allGuests.find(g => (g.code && g.code.toLowerCase() === guestCode.toLowerCase()) || String(g.id) === String(guestCode));
     } else if (guestName) {
       this.currentGuest = this.allGuests.find(g => g.name.toLowerCase().includes(guestName.toLowerCase()));
     }
