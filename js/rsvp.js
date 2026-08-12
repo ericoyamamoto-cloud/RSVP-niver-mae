@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (COM ISOLAMENTO SEGURO, ANTI-XSS & MASCARAMENTO)
+   GUEST RSVP MODULE (PREENCHIMENTO PRÉVIO & REMOÇÃO DE CAMPO DE OBSERVAÇÃO)
    ========================================================================== */
 
 class RsvpController {
@@ -201,6 +201,7 @@ class RsvpController {
       guestStatusBadgeEl.className = `badge ${guest.status === 'Confirmado' ? 'badge-green' : guest.status === 'Recusado' ? 'badge-red' : 'badge-gold'}`;
     }
 
+    // Carrega e preenche previamente a resposta caso o convidado já tenha respondido!
     const choiceYes = document.getElementById('choice-yes-btn');
     const choiceNo = document.getElementById('choice-no-btn');
     const radioYes = document.getElementById('choice-yes');
@@ -211,21 +212,25 @@ class RsvpController {
       if (choiceYes) choiceYes.classList.add('selected-yes');
       if (choiceNo) choiceNo.classList.remove('selected-no');
       this.toggleCompanionsGroup(true);
+
+      const companionsSelect = document.getElementById('companions-count');
+      if (companionsSelect) {
+        companionsSelect.value = guest.companionsCount || 0;
+        const namesToFill = guest.companionNames || guest.notes || '';
+        this.renderCompanionInputFields(guest.companionsCount || 0, namesToFill);
+      }
     } else if (guest.status === 'Recusado') {
       if (radioNo) radioNo.checked = true;
       if (choiceNo) choiceNo.classList.add('selected-no');
       if (choiceYes) choiceYes.classList.remove('selected-yes');
       this.toggleCompanionsGroup(false);
+    } else {
+      if (radioYes) radioYes.checked = false;
+      if (radioNo) radioNo.checked = false;
+      if (choiceYes) choiceYes.classList.remove('selected-yes');
+      if (choiceNo) choiceNo.classList.remove('selected-no');
+      this.toggleCompanionsGroup(false);
     }
-
-    const companionsSelect = document.getElementById('companions-count');
-    if (companionsSelect) {
-      companionsSelect.value = guest.companionsCount || 0;
-      this.renderCompanionInputFields(guest.companionsCount || 0, guest.companionNames);
-    }
-
-    const notesInput = document.getElementById('rsvp-notes');
-    if (notesInput) notesInput.value = this.sanitizeInput(guest.notes || '');
   }
 
   toggleCompanionsGroup(show) {
@@ -238,7 +243,10 @@ class RsvpController {
     if (!container) return;
 
     container.innerHTML = '';
-    const existingNames = existingNamesStr ? existingNamesStr.split(',').map(n => this.sanitizeInput(n.trim())) : [];
+    
+    // Limpa o prefixo "Acompanhantes: " se existir
+    let cleanNamesStr = existingNamesStr.replace(/^Acompanhantes:\s*/i, '');
+    const existingNames = cleanNamesStr ? cleanNamesStr.split(',').map(n => this.sanitizeInput(n.trim())) : [];
 
     for (let i = 0; i < count; i++) {
       const fieldDiv = document.createElement('div');
@@ -375,9 +383,6 @@ class RsvpController {
     const rawCompanionNames = Array.from(companionInputs).map(inp => inp.value.trim()).filter(Boolean).join(', ');
     const companionNames = this.sanitizeInput(rawCompanionNames);
 
-    const rawNotes = document.getElementById('rsvp-notes')?.value.trim() || '';
-    const notes = this.sanitizeInput(rawNotes);
-
     const submitBtn = document.getElementById('rsvp-submit-btn');
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -393,7 +398,7 @@ class RsvpController {
         status: status,
         companionsCount: companionsCount,
         companionNames: companionNames,
-        notes: notes
+        notes: ''
       });
 
       this.currentGuest = updatedGuest;

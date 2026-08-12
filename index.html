@@ -182,13 +182,7 @@
             <div id="companion-names-container"></div>
           </div>
 
-          <!-- Notes / Message to Host -->
-          <div class="form-group">
-            <label class="form-label" for="rsvp-notes">Mensagem ou Observação ao Anfitrião (opcional):</label>
-            <textarea id="rsvp-notes" class="form-control" placeholder="Deixe um recado especial, sugestão de música ou restrição alimentar..."></textarea>
-          </div>
-
-          <button type="submit" id="rsvp-submit-btn" class="btn btn-primary btn-block" style="padding:1rem;">
+          <button type="submit" id="rsvp-submit-btn" class="btn btn-primary btn-block" style="padding:1rem; margin-top:1.5rem;">
             Confirmar Resposta
           </button>
         </form>
@@ -519,9 +513,9 @@
   <div id="guide-modal-overlay" class="modal-overlay">
     <div class="modal-container" style="max-width:720px; max-height:90vh; overflow-y:auto;">
       <button class="modal-close" onclick="document.getElementById('guide-modal-overlay').classList.remove('active')">&times;</button>
-      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google (Atualizando Colunas D, E, F, I, L e M)</h3>
+      <h3 style="font-size:1.4rem; margin-bottom:0.5rem;" class="gradient-text">Como Conectar a sua Planilha do Google</h3>
       <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem;">
-        Código configurado para atualizar a <strong>Coluna D (Qtd. Dependentes)</strong>, <strong>Coluna E (Total na Família = 1 + Dependentes)</strong>, <strong>Coluna F (Sim/Não)</strong>, <strong>Coluna I (✓)</strong>, <strong>Coluna L (Comentários)</strong> e <strong>Coluna M (Código Único Fixo)</strong> sem alterar a Coluna G:
+        Código configurado para atualizar a <strong>Coluna D (Qtd. Dependentes)</strong>, <strong>Coluna E (Total na Família)</strong>, <strong>Coluna F (Sim/Não)</strong>, <strong>Coluna I (✓)</strong>, <strong>Coluna L (Acompanhantes)</strong> e <strong>Coluna M (Código Único)</strong>:
       </p>
 
       <div class="code-snippet-box" id="guide-code-box">
@@ -621,7 +615,6 @@ function doPost(e) {
     var sent = postData.sent;
     var companionsCount = Number(postData.companionsCount || 0);
     var companionNames = String(postData.companionNames || '').trim();
-    var notes = String(postData.notes || '').trim();
     var rowIndex = -1;
     for (var i = 5; i < data.length; i++) {
       var rowId = String(data[i][1]);
@@ -646,9 +639,9 @@ function doPost(e) {
           sheet.getRange(rowIndex, 5).setValue(0);
         }
       }
-      var finalComment = notes;
-      if (companionNames) finalComment = (finalComment ? finalComment + ' | Acompanhantes: ' : 'Acompanhantes: ') + companionNames;
-      if (finalComment) sheet.getRange(rowIndex, 12).setValue(finalComment);
+      if (companionNames) {
+        sheet.getRange(rowIndex, 12).setValue(companionNames);
+      }
       if (sent === true) sheet.getRange(rowIndex, 9).setValue('✓');
     }
     return responseJSON({ success: true, message: 'Sucesso!' });
