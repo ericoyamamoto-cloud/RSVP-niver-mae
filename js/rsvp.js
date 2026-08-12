@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GUEST RSVP MODULE (REMOÇÃO COMPLETA DE FALLBACK DE ID NUMÉRICO)
+   GUEST RSVP MODULE (CORREÇÃO DE MATCH DE CÓDIGO ÚNICO SEM PEGAR PRIMEIRO CONVIDADO)
    ========================================================================== */
 
 class RsvpController {
@@ -13,12 +13,20 @@ class RsvpController {
     const urlParams = new URLSearchParams(window.location.search);
     const guestCode = urlParams.get('code');
 
-    // Se o convidado veio por um link individual com Código Único da Coluna M (?code=K8X92P)
     if (guestCode && guestCode.trim()) {
-      const singleList = await window.storageEngine.fetchGuests(guestCode.trim());
-      if (Array.isArray(singleList) && singleList.length > 0) {
-        this.currentGuest = singleList[0];
-        this.allGuests = singleList;
+      const cleanCode = guestCode.trim().toLowerCase();
+      const resultList = await window.storageEngine.fetchGuests(cleanCode);
+      
+      if (Array.isArray(resultList) && resultList.length > 0) {
+        // CORREÇÃO CRÍTICA: Busca ESTRITAMENTE pelo código correspondente
+        const matched = resultList.find(g => g.code && g.code.toLowerCase().trim() === cleanCode);
+        if (matched) {
+          this.currentGuest = matched;
+          this.allGuests = [matched];
+        } else {
+          this.currentGuest = null;
+          this.allGuests = [];
+        }
       }
     } else {
       this.allGuests = await window.storageEngine.fetchGuests();
@@ -158,8 +166,8 @@ class RsvpController {
     }
 
     if (guestCode && guestCode.trim()) {
-      // Busca ESTRITAMENTE pelo código da Coluna M (NUNCA por número de id)
-      this.currentGuest = this.allGuests.find(g => g.code && g.code.toLowerCase().trim() === guestCode.toLowerCase().trim());
+      const cleanCode = guestCode.trim().toLowerCase();
+      this.currentGuest = this.allGuests.find(g => g.code && g.code.toLowerCase().trim() === cleanCode);
     } else if (guestName) {
       this.currentGuest = this.allGuests.find(g => g.name.toLowerCase().includes(guestName.toLowerCase()));
     }
